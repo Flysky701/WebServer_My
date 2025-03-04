@@ -65,5 +65,4 @@ int main()
     // 6. 关闭连接
     close(connfd);
     close(listenfd);
-    return 0;
 }
