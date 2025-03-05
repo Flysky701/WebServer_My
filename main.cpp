@@ -24,7 +24,7 @@ int main()
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(8080);
 
-    if(bind(server_fd, (sockaddr*)&server_addr, sizeof(server_addr)) < 0){
+    if(bind(server_fd, (sockaddr*)&server_addr, sizeof(server_addr)) < 0){ 
         Fail("bind");
         close(server_fd);
         return 1;
