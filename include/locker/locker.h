@@ -53,4 +53,10 @@ class locker{
         locker &operator=(const locker &) = delete;
 };
 
-#endif 
+class cond{
+    private:
+        
+    public:
+};
+
+#endif

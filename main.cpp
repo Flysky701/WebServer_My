@@ -3,66 +3,68 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstring>
-#include <arpa/inet.h> // 添加 inet_ntop 函数头文件
+#include <string>
 
+
+void Fail(std::string word){
+    std::cout << "Fail on ";
+    std::cout << word << std::endl;
+    return;
+}
 int main()
 {
-    // 1. 创建 socket
-    int listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (listenfd == -1)
-    {
-        perror("socket");
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if(server_fd < 0){
+        Fail("TPC");
         return 1;
     }
 
-    // 2. 绑定地址
-    sockaddr_in serv_addr{};
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(8888);
-    if (bind(listenfd, (sockaddr *)&serv_addr, sizeof(serv_addr)) == -1)
-    {
-        perror("bind");
-        close(listenfd);
+    sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET; // IPV4;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(8080);
+
+    if(bind(server_fd, (sockaddr*)&server_addr, sizeof(server_addr)) < 0){
+        Fail("bind");
+        close(server_fd);
         return 1;
     }
 
-    // 3. 监听
-    if (listen(listenfd, 5) == -1)
-    {
-        perror("listen");
-        close(listenfd);
+    if(listen(server_fd, 5) < 0){
+        Fail("listen");
+        close(server_fd);
         return 1;
     }
 
-    std::cout << "Server running on port 8888..." << std::endl;
+    std::cout << "Server start" << std::endl;
 
-    // 4. 接受连接
-    sockaddr_in cli_addr{};
-    socklen_t cli_len = sizeof(cli_addr);
-    int connfd = accept(listenfd, (sockaddr *)&cli_addr, &cli_len);
-    if (connfd == -1)
-    {
-        perror("accept");
-        close(listenfd);
-        return 1;
+    while(1){
+        sockaddr_in client_addr;
+        socklen_t client_len = sizeof(client_addr);
+
+        int client_fd = accept(server_fd, (sockaddr *)&client_addr, &client_len);
+        if(client_fd < 0){
+            std::cout << "Fail on conn" << std::endl;
+            continue;
+        }
+
+        char buffer[1024] = {0};
+        ssize_t read = recv(client_fd, buffer, sizeof(buffer), 0);
+        if(read < 0){
+            Fail("read");
+            close(client_fd);
+            continue;
+        }
+
+        std::string resp = "HTTP/1.1 200 OK\r\n"
+                           "Content-Type: text/html; charset=utf-8\r\n"
+                           "\r\n"
+                           "<h1>欢迎访问C++服务器！</h1>"
+                           "<p>当前连接处理方式：单线程</p>";
+        send(client_fd, resp.c_str(), resp.size(), 0);
+        close(client_fd);
     }
 
-    // 打印客户端 IP
-    char cli_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &cli_addr.sin_addr, cli_ip, INET_ADDRSTRLEN);
-    std::cout << "Client connected: " << cli_ip << std::endl;
-
-    // 5. 发送 HTTP 响应
-    const char *msg =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: 18\r\n"
-        "\r\n"
-        "Hello from server!";
-    write(connfd, msg, strlen(msg));
-
-    // 6. 关闭连接
-    close(connfd);
-    close(listenfd);
+    close(server_fd);
+    return 0;
 }
