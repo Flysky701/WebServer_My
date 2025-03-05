@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <string>
+#include "include/threadpool/threadpool.h"
 
 
 void Fail(std::string word){
@@ -11,6 +12,7 @@ void Fail(std::string word){
     std::cout << word << std::endl;
     return;
 }
+
 int main()
 {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -36,6 +38,7 @@ int main()
         return 1;
     }
 
+    ThreadPool pool(5);
     std::cout << "Server start" << std::endl;
 
     while(1){
@@ -48,21 +51,28 @@ int main()
             continue;
         }
 
-        char buffer[1024] = {0};
-        ssize_t read = recv(client_fd, buffer, sizeof(buffer), 0);
-        if(read < 0){
-            Fail("read");
-            close(client_fd);
-            continue;
-        }
+        auto fun = [client_fd]{
+            char buffer[1024] = {0};
+            ssize_t read = recv(client_fd, buffer, sizeof(buffer), 0);
 
-        std::string resp = "HTTP/1.1 200 OK\r\n"
-                           "Content-Type: text/html; charset=utf-8\r\n"
-                           "\r\n"
-                           "<h1>欢迎访问C++服务器！</h1>"
-                           "<p>当前连接处理方式：单线程</p>";
-        send(client_fd, resp.c_str(), resp.size(), 0);
-        close(client_fd);
+            if(read < 0){
+                Fail("read");
+                close(client_fd);
+                return;
+            }
+
+            std::string resp =  "HTTP/1.1 200 OK\r\n"
+                                "Content-Type: text/html; charset=utf-8\r\n"
+                                "\r\n"
+                                "<h1>欢迎访问C++服务器！</h1>"
+                                "<p>当前连接处理方式：多线程</p>";
+            send(client_fd, resp.c_str(), resp.size(), 0);
+            close(client_fd);
+            return;
+        };
+
+        pool.enqueue(fun);
+        
     }
 
     close(server_fd);
