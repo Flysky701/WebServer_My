@@ -28,17 +28,19 @@ class ThreadPool{
 
 
         void work_loop(){
-            Task task;
-            {
-                std::unique_lock<std::mutex> lock(mtx);
-                this->cv.wait(lock, [this]{return this->stop || !this->tasks.empty();});
-
-                if (this->stop && this->tasks.empty())
-                    return;
-                task = std::move(this->tasks.front());
-                this->tasks.pop();
+            while(true){
+                Task task;
+                {
+                    std::unique_lock<std::mutex> lock(mtx);
+                    this->cv.wait(lock, [this]{return this->stop || !this->tasks.empty();});
+    
+                    if (this->stop && this->tasks.empty())
+                        return;
+                    task = std::move(this->tasks.front());
+                    this->tasks.pop();
+                }
+                task();
             }
-            task();
         }
 };
 
@@ -59,12 +61,12 @@ ThreadPool::~ThreadPool()
         if(worker.joinable())
             worker.join();
 }
-template<class T>
-void ThreadPool::enqueue(T &&task)
+template<class F>
+void ThreadPool::enqueue(F &&task)
 {
     {
-        std::unique_lock<std::mutex> lock(mtx);
-        tasks.emplace(std::forward<T>(task));
+        std::lock_guard<std::mutex> lock(mtx);
+        tasks.emplace(std::forward<F>(task));
     }
     cv.notify_one();
 }
