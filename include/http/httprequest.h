@@ -40,7 +40,8 @@ private:
     {
         std::vector<char> bin;
         for (size_t i = 0; i < orgin.size(); i += 2){
-            std::string tmp = "" + orgin[i] + orgin[i + 1];
+            std::string tmp;
+            tmp += orgin[i] + orgin[i + 1];
             bin.emplace_back(static_cast<char>(
                 std::stoi(tmp, nullptr, 16)));
         }

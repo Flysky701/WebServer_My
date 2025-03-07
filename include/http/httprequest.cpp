@@ -25,7 +25,7 @@ bool HttpRequest::parse(const char* data, size_t len){
                 state_ = PARSE_ERROR;
                 return false;
             }
-            else state_ == PARSE_HEADERS;
+            else state_ = PARSE_HEADERS;
         }
         else if (state_ == PARSE_HEADERS)
         {
@@ -39,7 +39,9 @@ bool HttpRequest::parse(const char* data, size_t len){
         else
             break;
     }
+    return true;
 }
+
 bool HttpRequest::parse_request_line(string_view line){
     size_t method_end = line.find(' ');
     if(method_end == string_view::npos)
@@ -48,8 +50,8 @@ bool HttpRequest::parse_request_line(string_view line){
 
     size_t path_start = method_end + 1;
     size_t path_end = line.find(' ', path_start);
-    if(path_end == string_view::npos)
-        return false;
+    if(path_end == string_view::npos)return false;
+    path_ = line.substr(path_start, path_end - path_start);
 
     size_t version_start = path_end + 1;
     version_ = line.substr(version_start);
