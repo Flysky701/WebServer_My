@@ -8,7 +8,7 @@
 #include "httprequest.h"
 
 
-void Fail(std::string word){
+void CallFail(std::string word){
     std::cout << "Fail on ";
     std::cout << word << std::endl;
     return;
@@ -18,7 +18,7 @@ int main()
 {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(server_fd < 0){
-        Fail("TPC");
+        CallFail("TPC");
         return 1;
     }
 
@@ -28,13 +28,13 @@ int main()
     server_addr.sin_port = htons(8080);
 
     if(bind(server_fd, (sockaddr*)&server_addr, sizeof(server_addr)) < 0){ 
-        Fail("bind");
+        CallFail("bind");
         close(server_fd);
         return 1;
     }
 
     if(listen(server_fd, 5) < 0){
-        Fail("listen");
+        CallFail("listen");
         close(server_fd);
         return 1;
     }
