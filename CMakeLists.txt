@@ -7,6 +7,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/http
     ${CMAKE_SOURCE_DIR}/include/threadpool
+    ${CMAKE_SOURCE_DIR}/include/log
 )
 
 add_executable(main 

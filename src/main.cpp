@@ -6,6 +6,7 @@
 #include <string>
 #include "threadpool.h"
 #include "httprequest.h"
+#include "log.h"
 
 
 void CallFail(std::string word){
@@ -16,6 +17,7 @@ void CallFail(std::string word){
 
 int main()
 {
+
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(server_fd < 0){
         CallFail("TPC");
@@ -40,7 +42,8 @@ int main()
     }
 
     ThreadPool pool(5);
-    std::cout << "Server start" << std::endl;
+    Log::instance().init("server.log");
+    LOG_INFO("server start");
 
     while(1){
         sockaddr_in client_addr;
@@ -48,6 +51,7 @@ int main()
 
         int client_fd = accept(server_fd, (sockaddr *)&client_addr, &client_len);
         if(client_fd < 0){
+            LOG_ERROR("Fail on conn", client_fd);
             std::cout << "Fail on conn" << std::endl;
             continue;
         }
@@ -60,6 +64,7 @@ int main()
             HttpRequest reqst;
             if(!reqst.parse(buffer))
             {
+                LOG_ERROR("Fail on Httprequest");
                 close(client_fd);
                 return;
             }
