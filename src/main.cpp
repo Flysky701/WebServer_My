@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <string>
+// 已经实现的功能， 功能较为初级， 后续可扩展
 #include "threadpool.h"
 #include "httprequest.h"
 #include "log.h"
@@ -45,7 +46,7 @@ int main()
     Log::instance().init("server.log");
     LOG_INFO("server start");
 
-    while(1){
+    while(true){
         sockaddr_in client_addr;
         socklen_t client_len = sizeof(client_addr);
 
@@ -73,7 +74,9 @@ int main()
             resp += "Content-Type: text/html\r\n";
             resp += "Connection: " + std::string(reqst.keep_alive() ? "keep-alive" : "close") + "\r\n";
             resp += "\r\n<h1>Hello from C++ Server!</h1>";
-            resp += "\r\n<h1>" + resp + "</h1>";
+
+
+            resp += "\r\n<h1>" + resp + "</h1>"; // test of Http
 
             send(client_fd, resp.c_str(), resp.size(), 0);
             close(client_fd);
