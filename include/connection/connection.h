@@ -3,8 +3,8 @@
 
 #include <vector> 
 #include <string>
-#include <sys/socket.h>
 #include <fcntl.h>
+#include <sys/socket.h>
 #include <system_error>
 #include <unistd.h>
 
@@ -12,7 +12,7 @@
 
 class Connection{
     public:
-        explicit Connection(int socket_fd);
+        Connection(int socket_fd);
         ~Connection();
 
         Connection(const Connection &) = delete;
@@ -20,14 +20,13 @@ class Connection{
 
         bool ReadData();                         // 从socket读取数据
         bool WriteData(const std::string &data); // 写入数据到缓冲区
-        bool Flush();                           // 尝试发送缓冲区数据
-
-        int GetFd() const {
-            return fd_;
-        }
-        bool HasPendingWrite() const {
-            return !w_buffer.empty();
-        }
+        bool Flush();
+        
+        const std::vector<char> &GetReadBuffer() const { return r_buffer; }
+        std::string &GetWriteBuffer() { return w_buffer; }
+        int GetFd() const {return fd_;}
+        
+        bool HasPendingWrite() const { return !w_buffer.empty();}
     private:
     
         int fd_;
@@ -47,67 +46,109 @@ class Connection{
         }
 };
 
-
-explicit Connection::Connection(int socket_fd){
+Connection::Connection(int socket_fd) : fd_(socket_fd){
+    if (fd_ < 0) 
+        throw std::invalid_argument("Invalid socket descriptor");
     SetNonBlocking();
-    LOG_DEBUG("");
+    LOG_DEBUG("创建连接: " + std::to_string(fd_));
 }
+
 Connection::~Connection(){
     if(fd_ >= 0){
         close(fd_);
-        LOG_DEBUG("");
+        LOG_DEBUG("关闭连接" + std::to_string(fd_));
     }
 }
 bool Connection::ReadData(){
     std::vector<char> buffer(4096);
-    ssize_t r_bytes = recv(fd_, buffer.data(), buffer.size(), MSG_DONTWAIT);
-
-    if(r_bytes > 0){
-        r_buffer = buffer;
-        LOG_DEBUG("");
-        return true;
-    }else if(r_bytes == 0){
-        LOG_INFO("");
-        return false;
-    }else {
-        if(errno == EAGAIN | errno == EWOULDBLOCK){
-            return true;
+    ssize_t tot_read = 0;
+    while (true)
+    {
+        ssize_t r_bytes = recv(fd_, buffer.data(), buffer.size(), MSG_DONTWAIT);
+        if (r_bytes > 0){
+            tot_read += r_bytes;
+            r_buffer.insert(r_buffer.end(), buffer.data(), buffer.data() + r_bytes);
         }
-        LOG_ERROR("");
-        return false;
+        else if (r_bytes == 0)
+            return false; // 连接关闭
+        else{
+            if (errno == EAGAIN || errno == EWOULDBLOCK)break;
+            LOG_ERROR("读取错误");
+            return false;
+        }
     }
+    LOG_DEBUG("读取到 " + std::to_string(tot_read) + " 字节");
+    return true;
 }
 
 bool Connection::WriteData(const std::string& data){
     try{
         w_buffer += data;
-        LOG_DEBUG("");
+        LOG_DEBUG("line 84 on conn");
         return true;
     }catch(const std::bad_alloc&){
-        LOG_ERROR("");
+        LOG_ERROR("line 87 on conn");
         return false;
     }
 }
-
-bool Connection::Flush(){
-    if(w_buffer.empty())
+bool Connection::Flush()
+{
+    if (w_buffer.empty())
         return true;
-    ssize_t w_byte = send(fd_, w_buffer.data(), w_buffer.size());
 
-    if(w_byte > 0){
-        w_buffer.erase(0, w_byte);
-        LOG_DEBUG("");
-        return true;
-    }
+    ssize_t total_sent = 0;
+    const char *data = w_buffer.data();
+    size_t remaining = w_buffer.size();
 
-    if(w_byte < 0){
-        if (errno == EAGAIN || errno == EWOULDBLOCK){
-            LOG_DEBUG("Send would block, waiting next opportunity");
-            return true; // 非阻塞模式下正常情况
+    while (remaining > 0)
+    {
+        ssize_t sent = send(fd_, data + total_sent, remaining, 0);
+        if (sent < 0)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                break; // 非阻塞模式下无法继续发送
+            }
+            else
+            {
+                // LOG_ERROR("发送错误: " + std::string(strerror(errno)));
+                return false;
+            }
         }
-        LOG_ERROR("Send error on fd " + std::to_string(fd_));
+        else if (sent == 0)
+        {
+            return false; // 连接关闭
+        }
+        total_sent += sent;
+        remaining -= sent;
     }
-    return false; // 其他错误需要关闭连接
+
+    if (total_sent > 0)
+    {
+        w_buffer.erase(0, total_sent);
+    }
+    return true;
 }
+
+// bool Connection::Flush(){
+//     if(w_buffer.empty())
+//         return true;
+//     ssize_t w_byte = send(fd_, w_buffer.data(), w_buffer.size(), 0);
+
+//     if(w_byte > 0){
+//         w_buffer.erase(0, w_byte);
+//         LOG_DEBUG("");
+//         return true;
+//     }
+
+//     if(w_byte < 0){
+//         if (errno == EAGAIN || errno == EWOULDBLOCK){
+//             LOG_DEBUG("Send would block, waiting next opportunity");
+//             return true; // 非阻塞模式下正常情况
+//         }
+//         LOG_ERROR("Send error on fd " + std::to_string(fd_));
+//     }
+//     return false; // 其他错误需要关闭连接
+// }
 
 #endif

@@ -8,9 +8,12 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include/http
     ${CMAKE_SOURCE_DIR}/include/threadpool
     ${CMAKE_SOURCE_DIR}/include/log
+    ${CMAKE_SOURCE_DIR}/include/epollmanager
+    ${CMAKE_SOURCE_DIR}/include/connection
+    ${CMAKE_SOURCE_DIR}/include/server
 )
 
 add_executable(main 
     src/main.cpp
-    include/http/httprequest.cpp
+    src/httprequest.cpp
 )

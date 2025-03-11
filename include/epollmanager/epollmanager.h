@@ -8,6 +8,7 @@
 #include <string>
 #include "log.h"
 
+//Epoll的封装 
 class EpollManager{
     public:
         EpollManager();
@@ -15,7 +16,7 @@ class EpollManager{
         void AddFd(int fd, uint32_t events);
         void ModifyFd(int fd, uint32_t events);
         void RemoveFd(int fd, uint32_t events);
-        int WaitEvents();
+        int WaitEvents(int timeout);
         struct epoll_event *GetEvent(){
             return events;
         }
@@ -27,7 +28,7 @@ class EpollManager{
 };
 
 EpollManager::EpollManager(){
-    epoll_fd = epoll_create1(1);
+    epoll_fd = epoll_create1(0);
     if(epoll_fd < 0){
         LOG_ERROR("创建EPOLL实例失败");
         throw std::system_error(errno, std::system_category());
@@ -40,6 +41,7 @@ EpollManager::~EpollManager(){
         LOG_INFO("EPOLL实例关闭");
     }
 }
+//                        连接     事件类型
 void EpollManager::AddFd(int fd, uint32_t events){
     struct epoll_event ev;
     ev.events = events; // 设置监听事件类型
@@ -66,7 +68,7 @@ void EpollManager::ModifyFd(int fd, uint32_t events){
     LOG_DEBUG("修改 fd" + std::to_string(fd) + "到EPOLL中");
 }
 void EpollManager::RemoveFd(int fd, uint32_t events){
-    // EPOLL_CTL_DEL 表示移除监控（最后一个参数可忽略）
+    // EPOLL_CTL_DEL 表示移除监控
     if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, nullptr) < 0)
     {
         LOG_ERROR("从EPOLL移除FD失败");
@@ -75,12 +77,13 @@ void EpollManager::RemoveFd(int fd, uint32_t events){
     LOG_DEBUG("Removed fd " + std::to_string(fd) + " from epoll");
 }
 
-int EpollManager::WaitEvents(){
-    int num_events = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
+int EpollManager::WaitEvents(int timeout = -1){
+    int num_events = epoll_wait(epoll_fd, events, MAX_EVENTS, timeout
+    );
     if(num_events < 0){
         LOG_ERROR("错误发生于epoll_wait");
         throw std::system_error(errno, std::system_category());
     }
+    return num_events;
 }
-
 #endif
