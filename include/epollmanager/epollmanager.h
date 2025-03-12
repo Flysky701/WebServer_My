@@ -41,7 +41,7 @@ EpollManager::~EpollManager(){
         LOG_INFO("EPOLL实例关闭");
     }
 }
-//                        连接     事件类型
+//                        连接   事件类型
 void EpollManager::AddFd(int fd, uint32_t events){
     struct epoll_event ev;
     ev.events = events; // 设置监听事件类型

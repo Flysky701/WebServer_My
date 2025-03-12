@@ -105,26 +105,23 @@ bool Connection::Flush()
         ssize_t sent = send(fd_, data + total_sent, remaining, 0);
         if (sent < 0)
         {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
+            if (errno == EAGAIN || errno == EWOULDBLOCK){
                 break; // 非阻塞模式下无法继续发送
             }
-            else
-            {
-                // LOG_ERROR("发送错误: " + std::string(strerror(errno)));
+            else{
+                LOG_ERROR("发送错误: " + std::string(strerror(errno)));
                 return false;
             }
         }
-        else if (sent == 0)
-        {
+        else if (sent == 0){
+
             return false; // 连接关闭
         }
         total_sent += sent;
         remaining -= sent;
     }
 
-    if (total_sent > 0)
-    {
+    if (total_sent > 0){
         w_buffer.erase(0, total_sent);
     }
     return true;

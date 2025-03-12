@@ -11,9 +11,11 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include/epollmanager
     ${CMAKE_SOURCE_DIR}/include/connection
     ${CMAKE_SOURCE_DIR}/include/server
+    ${CMAKE_SOURCE_DIR}/include/timer
 )
 
 add_executable(main 
     src/main.cpp
     src/httprequest.cpp
+    
 )

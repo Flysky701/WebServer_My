@@ -61,8 +61,6 @@ class Server{
         void CloseConnection(Connection* conn);
         void ProcessPendingTask();
 };
-// 
-// throw std::system_error(errno, std::system_category());
 
 void Server::Run(){
     running = true;
@@ -142,6 +140,8 @@ void Server::HandelConnection(){
         M_epoll.AddFd(client_fd, EPOLLET | EPOLLIN);
         LOG_DEBUG("添加一个新连接" + std::to_string(client_fd));
     }
+    LOG_INFO("HandelConnection_quit");
+    
 }
 
 bool Server::HandleRead(Connection* conn){
@@ -201,28 +201,6 @@ void Server::HandleEvent(epoll_event& event){
     }
         
 }
-// void Server::SubmitToThreadPool(Connection* conn){
-//     auto fun = [this, conn]()
-//     {
-//         HttpRequest req;
-//         const auto &buffer = conn->GetReadBuffer();
-//         if (req.parse(buffer))
-//         {
-//             std::string resp = "HTTP/1.1 200 OK\r\n";
-//             resp += "Content-Type: text/html\r\n";
-//             resp += "Content-Length: " + std::to_string(26) + "\r\n";
-//             resp += "Connection: keep-alive\r\n\r\n";
-//             resp += "<h1>Hello from Server</h1>";
-
-//             {
-//                 std::lock_guard<std::mutex> lock(epoll_mtx);
-//                 conn->WriteData(resp);
-//                 M_epoll.ModifyFd(conn->GetFd(), EPOLLIN | EPOLLOUT | EPOLLET);
-//             }
-//         }
-//     };
-//     pool.enqueue(fun);
-// }
 
 void Server::SubmitToThreadPool(Connection *conn)
 {
