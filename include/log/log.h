@@ -20,7 +20,7 @@ public:
         return instance;
     }
 
-    void init(const std::string& filepath = "./webserver.log", Level consoleLevel = INFO, Level currentLevel = INFO) {
+    void init(const std::string& filepath = "./webserver.log", Level consoleLevel = DEBUG, Level currentLevel = DEBUG) {
         std::lock_guard<std::mutex> lock(mtx);
         file_.open(filepath, std::ios::app);
         if (!file_.is_open()) {

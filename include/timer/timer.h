@@ -5,9 +5,8 @@
 #include <vector>
 #include <unordered_map>
 #include <chrono>
-#include <functional>  // 修正拼写错误
-#include <memory>      // 添加内存管理头文件
-//
+#include <functional>
+#include <memory>
 #include "log.h"
 
 class Timer{
@@ -20,7 +19,8 @@ class Timer{
         void Add(int fd, int timeout_ms);
         void Tick();
         void Clear();
-    
+        void Remove(int fd);
+
     private:
         struct TimerNode{
             int fd;
@@ -72,7 +72,7 @@ void Timer::Tick() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto now = std::chrono::steady_clock::now();
-        while (!heap_.empty() && heap_.front().expire <= now) {
+        while (!heap_.empty() && heap_[0].expire <= now) {
             expired_fds.push_back(heap_.front().fd);
             Heap_pop();
         }
@@ -86,11 +86,25 @@ void Timer::Clear() {
     heap_.clear();
     fd_to_index_.clear();
 }
+void Timer::Remove(int fd){
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(!fd_to_index_.count(fd))
+        return;
+    size_t idx = fd_to_index_[fd];
+    Swap_Node(idx, heap_.size() - 1);
+    heap_.pop_back();
+    fd_to_index_.erase(fd);
+    
+    if(idx < heap_.size()){
+        Heap_up(idx);
+        Heap_down(idx);
+    }
+}
 
 void Timer::Heap_up(size_t idx){
     while(idx > 0){
         size_t parent = (idx - 1) / 2;
-        if (!(heap_[parent] < heap_[idx])) break;
+        if (heap_[idx].expire >= heap_[parent].expire) break;
         Swap_Node(idx, parent);
         idx = parent;
     }
@@ -112,9 +126,12 @@ void Timer::Heap_down(size_t idx){
 }
 void Timer::Heap_pop() {
     if(!heap_.size())return;
+    std::cout << "Heappop()" << heap_[0].fd << std::endl;
     Timer::Swap_Node(0, heap_.size() - 1);
+
     fd_to_index_.erase(heap_.back().fd);
     heap_.pop_back();
+
     if (!heap_.empty()) {
         Heap_down(0);
     }

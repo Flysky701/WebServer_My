@@ -127,25 +127,4 @@ bool Connection::Flush()
     return true;
 }
 
-// bool Connection::Flush(){
-//     if(w_buffer.empty())
-//         return true;
-//     ssize_t w_byte = send(fd_, w_buffer.data(), w_buffer.size(), 0);
-
-//     if(w_byte > 0){
-//         w_buffer.erase(0, w_byte);
-//         LOG_DEBUG("");
-//         return true;
-//     }
-
-//     if(w_byte < 0){
-//         if (errno == EAGAIN || errno == EWOULDBLOCK){
-//             LOG_DEBUG("Send would block, waiting next opportunity");
-//             return true; // 非阻塞模式下正常情况
-//         }
-//         LOG_ERROR("Send error on fd " + std::to_string(fd_));
-//     }
-//     return false; // 其他错误需要关闭连接
-// }
-
 #endif

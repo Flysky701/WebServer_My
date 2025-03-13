@@ -1,8 +1,9 @@
 #include <string> 
+#include "log.h"  
 #include "server.h"
 
 int main(){
-    Log::instance().init("Webserver.log");
+    Log::instance().init("Webserver.log", Log::INFO, Log::INFO);
     try{
         Server server(8080);
         server.Run();
