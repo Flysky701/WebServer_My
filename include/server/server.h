@@ -95,7 +95,7 @@ void Server::Run()
 }
 void Server::InitSocket()
 {
-    LOG_INFO("InitSocket");
+    // LOG_INFO("InitSocket");
     server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd_ < 0)
     {
@@ -263,8 +263,8 @@ void Server::SubmitToThreadPool(Connection *conn)
         const auto &buffer = conn->GetReadBuffer();
         if (req.parse(buffer))
         {
-
-            LOG_ERROR(req.method() + "   " +  req.path() + "   " + req.version());
+            conn->ClearReadBuffer();
+            
             try
             {
                 // 先尝试静态文件处理
@@ -325,7 +325,7 @@ void Server::SubmitToThreadPool(Connection *conn)
     };
     pool_.enqueue(fun);
 }
-// 解释下面的功能
+
 void Server::ProcessPendingTask()
 {
     std::lock_guard<std::mutex> lock(task_mtx);
@@ -336,6 +336,7 @@ void Server::ProcessPendingTask()
         task();
     }
 }
+
 void Server::CloseConnection(Connection *conn)
 {
     if (!conn)
@@ -347,7 +348,9 @@ void Server::CloseConnection(Connection *conn)
 
         if (Conns_.count(fd))
         {
+            auto it = Conns_.find(fd);
             M_epoll_.RemoveFd(fd, 0);
+            it->second->MarkClosed();
             Conns_.erase(fd);
             close(fd);
             LOG_DEBUG("关闭连接: " + std::to_string(fd));

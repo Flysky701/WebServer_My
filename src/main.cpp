@@ -3,7 +3,7 @@
 #include "server.h"
 
 int main(){
-    Log::instance().init("Webserver.log", Log::DEBUG, Log::DEBUG);
+    Log::instance().init("Webserver.log", Log::INFO, Log::INFO);
     try{
         Server server(8080);
         server.Run();

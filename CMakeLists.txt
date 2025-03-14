@@ -5,6 +5,9 @@ set(CMAKE_CXX_STANDARD 17)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/public DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+add_compile_options(-fsanitize=address)
+add_link_options(-fsanitize=address)
+
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/http

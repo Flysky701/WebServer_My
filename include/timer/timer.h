@@ -126,7 +126,7 @@ void Timer::Heap_down(size_t idx){
 }
 void Timer::Heap_pop() {
     if(!heap_.size())return;
-    std::cout << "Heappop()" << heap_[0].fd << std::endl;
+    // std::cout << "Heappop()" << heap_[0].fd << std::endl;
     Timer::Swap_Node(0, heap_.size() - 1);
 
     fd_to_index_.erase(heap_.back().fd);
