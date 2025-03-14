@@ -20,6 +20,7 @@ class Connection{
         bool ReadData();                         // 从socket读取数据
         bool WriteData(const std::string &data); // 写入数据到缓冲区
         bool Flush();
+        void ClearReadBuffer(){r_buffer.clear();};
         
         const std::vector<char> &GetReadBuffer() const { return r_buffer; }
         std::string &GetWriteBuffer() { return w_buffer; }

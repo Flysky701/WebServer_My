@@ -350,7 +350,6 @@ void Server::CloseConnection(Connection *conn)
         {
             auto it = Conns_.find(fd);
             M_epoll_.RemoveFd(fd, 0);
-            it->second->MarkClosed();
             Conns_.erase(fd);
             close(fd);
             LOG_DEBUG("关闭连接: " + std::to_string(fd));
