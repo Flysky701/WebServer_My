@@ -31,6 +31,8 @@ class HttpRequest
             std::string file_extension;
         };
 
+        static std::string get_file_extension(const std::string &path);
+        static std::string get_mime_type(const std::string &path);
         FileInfo get_file_info()const{
             FileInfo result = {get_mime_type(path_), get_file_extension(path_)};
             return result;
@@ -54,8 +56,6 @@ class HttpRequest
 
         bool parse_request_line(std::string_view line);
         void parse_headers(std::string_view line);
-        static std::string get_file_extension(const std::string &path);
-        static std::string get_mime_type(const std::string &path);
 
         // 动态路由，未完成
         // std::unordered_map<std::string, std::string> query_params_;

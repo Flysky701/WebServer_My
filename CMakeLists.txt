@@ -12,7 +12,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include/connection
     ${CMAKE_SOURCE_DIR}/include/server
     ${CMAKE_SOURCE_DIR}/include/timer
-
+    ${CMAKE_SOURCE_DIR}/include/filehandle
 )
 
 add_executable(main

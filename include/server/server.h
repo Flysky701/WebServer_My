@@ -19,10 +19,10 @@
 #include"connection.h"
 #include"threadpool.h"
 #include"httprequest.h"
+#include"httpresponse.h"
+#include"staticfilehandle.h"
 #include"timer.h"
 #include"log.h"
-
-
 
 class Server{
     public:
@@ -52,6 +52,8 @@ class Server{
         ThreadPool pool_;
         Timer timer_;
         static constexpr int CONN_TIMEOUT = 60000;
+        StaticFileHandler static_handler_{"pubilc"};
+        Router route_;
 
         std::unordered_map<int, std::unique_ptr<Connection>> Conns_;
         std::mutex epoll_mtx;
@@ -229,14 +231,50 @@ void Server::SubmitToThreadPool(Connection *conn)
     auto fun = [this, conn]()
     {
         HttpRequest req;
+        HttpResponse res;
+        bool request_handled = false;
         const auto &buffer = conn->GetReadBuffer();
         if (req.parse(buffer))
         {
-            std::string resp = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 26\r\nConnection: keep-alive\r\n\r\n<h1>Hello from Server</h1>";
-            
+            try
+            {
+                // 先尝试静态文件处理
+                if (req.method() == "GET" || req.method() == "HEAD")
+                {
+                    request_handled = static_handler_.handle_request(req, res);
+                }
+
+                // 如果静态文件未处理，尝试路由处理
+                if (!request_handled)
+                {
+                    request_handled = route_.handle(req, res);
+                }
+
+                // 最终未匹配的处理
+                if (!request_handled)
+                {
+                    res.set_status(404)
+                        .set_content("<h1>404 Not Found</h1>", "text/html");
+                }
+            }
+            catch (const std::exception &e)
+            {
+                res.set_status(500)
+                    .set_content("<h1>500 Internal Server Error</h1>", "text/html");
+                LOG_ERROR("请求处理异常: " + std::string(e.what()));
+            }
+
+            // 设置通用响应头
+            res.set_keep_alive(req.keep_alive())
+                .set_header("Server", "MyServer/1.0");
+
+            // 序列化响应
+            std::string resp_str = res.serialize();
+
             {
                 std::lock_guard<std::mutex> lock(epoll_mtx);
-                conn->WriteData(resp);
+                conn->WriteData(resp_str
+                );
             }
             // 提交Flush及事件修改到主线程
             {
