@@ -13,6 +13,7 @@ class HttpRequest
             PARSE_LINE,    // 解析请求行
             PARSE_HEADERS, // 解析头部
             PARSE_BODY,    // 解析正文
+            PARSE_COMPLETE,
             PARSE_ERROR    // 错误状态
         };
         bool parse(const char *data, size_t len);
@@ -34,6 +35,8 @@ class HttpRequest
             FileInfo result = {get_mime_type(path_), get_file_extension(path_)};
             return result;
         }
+
+        // 动态路由
         // const std::unordered_map<std::string, std::string> &query_params() const { return query_params_; };
         // const std::unordered_map<std::string, std::string> &path_params() const { return path_params_; };
         // const std::unordered_map<std::string, std::string> &form_params() const { return form_params_; };

@@ -28,8 +28,7 @@ class Server{
     public:
         explicit Server(int port)
             : port_(port), running_(false), pool_(std::thread::hardware_concurrency() * 2),
-              timer_([this](int fd)
-                     { HandleTimeout(fd); })
+              timer_([this](int fd) { HandleTimeout(fd); })
         {
                 InitSocket();
                 M_epoll_.AddFd(server_fd_, EPOLLIN);
@@ -234,6 +233,7 @@ void Server::SubmitToThreadPool(Connection *conn)
         if (req.parse(buffer))
         {
             std::string resp = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 26\r\nConnection: keep-alive\r\n\r\n<h1>Hello from Server</h1>";
+            
             {
                 std::lock_guard<std::mutex> lock(epoll_mtx);
                 conn->WriteData(resp);

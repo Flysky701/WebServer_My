@@ -35,6 +35,7 @@ string HttpRequest::get_mime_type(const string& path){
         return it->second;
     return "application/octet-stream";
 }
+
 bool HttpRequest::parse(const char* data, size_t len){
     std::string_view input(data, len);
     size_t pos = 0;
@@ -46,27 +47,28 @@ bool HttpRequest::parse(const char* data, size_t len){
         string_view line = input.substr(pos, line_end - pos);
         pos = line_end + 2;
 
-
-        if(state_ == PARSE_LINE){
-            if(parse_request_line(line) == false){
-                state_ = PARSE_ERROR;
+        switch(state_){
+            case PARSE_LINE:
+                if (parse_request_line(line) == false){
+                    state_ = PARSE_ERROR;
+                    return false;
+                }
+                else
+                    state_ = PARSE_HEADERS;
+                break;
+            case PARSE_HEADERS:
+                if (line.empty()){
+                    // 静态文件不需要处理body，直接完成解析
+                    state_ = PARSE_COMPLETE;
+                    return true;
+                }
+                parse_headers(line);
+                break;
+            default :
                 return false;
-            }
-            else state_ = PARSE_HEADERS;
         }
-        else if (state_ == PARSE_HEADERS)
-        {
-            if (line.empty()){
-                state_ = PARSE_BODY;
-                return true; // 暂时不处理body
-            }
-            parse_headers(line);
-            break;
-        }
-        else
-            break;
     }
-    return true;
+    return state_ == PARSE_COMPLETE;
 }
 
 bool HttpRequest::parse_request_line(string_view line){
@@ -78,8 +80,17 @@ bool HttpRequest::parse_request_line(string_view line){
     size_t path_start = method_end + 1;
     size_t path_end = line.find(' ', path_start);
     if(path_end == string_view::npos)return false;
-    
-    path_ = line.substr(path_start, path_end - path_start);
+
+    string_view full_path = line.substr(path_start, path_end - path_start);
+    size_t query_start = full_path.find('?');
+
+    path_ = full_path.substr(0, query_start);
+
+    /*
+    if(query_start != string_view::npos){
+        ...
+    }
+    */
 
     size_t version_start = path_end + 1;
     version_ = line.substr(version_start);
