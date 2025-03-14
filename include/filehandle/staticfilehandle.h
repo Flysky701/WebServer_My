@@ -1,4 +1,5 @@
 #pragma once
+
 #include <string>
 #include <fstream> 
 #include"router.h"
@@ -6,7 +7,6 @@
 #include"httpresponse.h"
 
 
-// staticfilehandler.h
 class StaticFileHandler
 {
     public:
@@ -16,13 +16,16 @@ class StaticFileHandler
         bool handle_request(const HttpRequest &req, HttpResponse &res){
             if (req.method() != "GET" && req.method() != "HEAD")
                 return false;
-    
+
             std::string path = resolve_path(req.path());
+            
             if (!is_safe_path(path)){
                 res.set_status(403);
                 return true;
             }
             std::string full_path = base_dir_ + path;
+            LOG_DEBUG("尝试访问文件路径: " + full_path);
+            
             if (!file_exists(full_path)){
                 res.set_status(404);
                 return true;
@@ -45,6 +48,7 @@ class StaticFileHandler
         bool is_safe_path(const std::string &path){
             return path.find("..")  == std::string::npos;
         }
+
         // 文件操作相关方法
         bool file_exists(const std::string &path){
             std::ifstream f(path);

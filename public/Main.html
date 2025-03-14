@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Server</title>
+    <style>
+        /* 重置默认样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            background: #f0f2f5;
+        }
+
+        /* 主容器 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        /* 标题样式 */
+        .header {
+            margin-bottom: 2rem;
+            color: #2c3e50;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 按钮容器 */
+        .button-group {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-bottom: 3rem;
+        }
+
+        /* 按钮样式 */
+        .media-btn {
+            padding: 1rem 2rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .media-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 媒体容器 */
+        #media-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 媒体内容响应式 */
+        #media-content {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            aspect-ratio: 16/9;
+            /* 保持媒体比例 */
+            object-fit: cover;
+            /* 图片/视频填充方式 */
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .media-btn {
+                width: 100%;
+            }
+
+            #media-container {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="header">My Server</h1>
+
+        <div class="button-group">
+            <button class="media-btn" onclick="loadImage()">显示图片</button>
+            <button class="media-btn" onclick="loadVideo()">播放视频</button>
+        </div>
+
+        <div id="media-container">
+            <!-- 媒体内容将动态加载到这里 -->
+        </div>
+    </div>
+
+    <script>
+        // 动态加载媒体内容
+        function loadImage() {
+            const container = document.getElementById('media-container');
+            container.innerHTML = `
+                <img 
+                    id="media-content"
+                    src="/images/example.jpg" 
+                    alt="服务器示例图片"
+                    loading="lazy"  // 延迟加载优化性能
+                >
+            `;
+        }
+
+        function loadVideo() {
+            const container = document.getElementById('media-container');
+            container.innerHTML = `
+                <video 
+                    id="media-content"
+                    controls 
+                    playsinline  // 移动端内联播放
+                    preload="metadata"  // 预加载元数据
+                    poster="/images/video-poster.jpg" // 视频封面
+                >
+                    <source src="/media/sample.mp4" type="video/mp4">
+                    <track label="中文" kind="subtitles" src="/medic/captions.vtt" srclang="zh" default>
+                    您的浏览器不支持视频播放
+                </video>
+            `;
+        }
+    </script>
+</body>
+
+</html>

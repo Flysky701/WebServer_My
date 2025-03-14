@@ -3,6 +3,8 @@ project(Webserver_My)
 
 set(CMAKE_CXX_STANDARD 17)
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/public DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/http
@@ -18,6 +20,4 @@ include_directories(
 add_executable(main
     src/main.cpp
     # src/test_unit.cpp
-    src/httprequest.cpp
-    src/server.cpp
 )

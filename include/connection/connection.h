@@ -1,5 +1,4 @@
-#ifndef CONNECTION_H
-#define CONNECTION_H
+#pragma once
 
 #include <vector> 
 #include <string>
@@ -126,5 +125,3 @@ bool Connection::Flush()
     }
     return true;
 }
-
-#endif

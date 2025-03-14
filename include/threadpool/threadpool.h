@@ -70,5 +70,4 @@ void ThreadPool::enqueue(F &&task)
     }
     cv.notify_one();
 }
-
 #endif

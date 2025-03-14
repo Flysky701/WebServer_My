@@ -9,9 +9,9 @@ class HttpResponse{
     public:
         HttpResponse() : status_code_(200), keep_alive_(false) {};
         // ~HttpResponse();
-        HttpResponse &set_status(int code, const std::string &reason = "");
+        HttpResponse &set_status(int code, const std::string &reason);
         HttpResponse &set_header(const std::string &key, const std::string &value);
-        HttpResponse &set_content(const std::string &content, const std::string &mime_type = "text/plain");
+        HttpResponse &set_content(const std::string &content, const std::string &mime_type);
         HttpResponse &set_keep_alive(bool keep_alive);
         std::string serialize() const;
 
