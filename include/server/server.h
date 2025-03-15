@@ -54,7 +54,7 @@ class Server{
         StaticFileHandler static_handler_{"public"};
         Router route_;
 
-        std::unordered_map<int, std::unique_ptr<Connection>> Conns_;
+        std::unordered_map<int, std::shared_ptr<Connection>> Conns_;
         std::mutex epoll_mtx;
         std::mutex task_mtx;
         std::queue<std::function<void()>> pending_tasks;
@@ -66,8 +66,9 @@ class Server{
         void HandleTimeout(int fd);
         bool HandleRead(Connection *conn);
         bool HandleWrite(Connection* conn);
-        void SubmitToThreadPool(Connection* conn);
-        void CloseConnection(Connection* conn);
+        // void SubmitToThreadPool(Connection* conn);
+        void SubmitToThreadPool(std::shared_ptr<Connection> conn);
+        void CloseConnection(std::shared_ptr<Connection> conn);
         void ProcessPendingTask();
 };
 
@@ -160,7 +161,7 @@ void Server::HandelConnection()
         }
         // LOG_DEBUG("HandelConnection_client_fd_YES");
 
-        auto conn = std::make_unique<Connection>(client_fd);
+        auto conn = std::make_shared<Connection>(client_fd);
         Conns_.emplace(client_fd, std::move(conn));
         M_epoll_.AddFd(client_fd, EPOLLET | EPOLLIN);
         timer_.Add(client_fd, CONN_TIMEOUT);
@@ -175,7 +176,7 @@ void Server::HandleTimeout(int fd)
     if (Conns_.count(fd))
     {
         LOG_INFO("连接超时 fd： %d", fd);
-        CloseConnection(Conns_[fd].get());
+        CloseConnection(Conns_[fd]);
     }
     else
     {
@@ -212,59 +213,53 @@ bool Server::HandleWrite(Connection *conn)
     return true;
 }
 
-void Server::HandleEvent(epoll_event &event)
-{
+void Server::HandleEvent(epoll_event &event) {
     int fd = event.data.fd;
-    auto it = Conns_.find(fd);
-    if (it == Conns_.end())
-        return;
-
-    Connection *conn = it->second.get();
-
-    if (event.events & EPOLLERR || event.events & EPOLLHUP)
+    std::shared_ptr<Connection> conn;
     {
+        std::lock_guard<std::mutex> lock(task_mtx);
+        auto it = Conns_.find(fd);
+        if (it == Conns_.end()) return;
+        conn = it->second;
+    }
+
+    if (event.events & (EPOLLERR | EPOLLHUP)) {
         CloseConnection(conn);
         return;
     }
 
-    if (event.events & EPOLLIN)
-        if (!HandleRead(conn))
+    if (event.events & EPOLLIN) {
+        if (!HandleRead(conn.get())) {
             CloseConnection(conn);
-        else
-        {
+        } else {
             timer_.Add(fd, CONN_TIMEOUT);
             SubmitToThreadPool(conn);
         }
+    }
 
-    if (event.events & EPOLLOUT)
-    {
-        if (!HandleWrite(conn))
-        {
+    if (event.events & EPOLLOUT) {
+        if (!HandleWrite(conn.get())) {
             CloseConnection(conn);
-            return;
-        }
-        else
-        {
+        } else {
             std::lock_guard<std::mutex> lock(epoll_mtx);
             timer_.Add(fd, CONN_TIMEOUT);
-            if (!conn->HasPendingWrite())
+            if (!conn->HasPendingWrite()) {
                 M_epoll_.ModifyFd(fd, EPOLLIN | EPOLLET);
+            }
         }
     }
 }
 
-void Server::SubmitToThreadPool(Connection *conn)
+void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn) 
 {
-    auto fun = [this, conn]()
-    {
+    auto fun = [this, conn]() {
         HttpRequest req;
         HttpResponse res;
         bool request_handled = false;
         const auto &buffer = conn->GetReadBuffer();
-        if (req.parse(buffer))
-        {
+
+        if (req.parse(buffer)) {
             conn->ClearReadBuffer();
-            
             try
             {
                 // 先尝试静态文件处理
@@ -307,8 +302,10 @@ void Server::SubmitToThreadPool(Connection *conn)
             // 提交Flush及事件修改到主线程
             {
                 std::lock_guard<std::mutex> t_lock(task_mtx);
-                pending_tasks.push([this, conn]()
+                pending_tasks.push([this,  fd = conn->GetFd()]()
                 {
+                    if (!Conns_.count(fd)) return;
+                    auto conn = Conns_[fd];
                     std::lock_guard<std::mutex> e_lock(epoll_mtx);
                     if (!conn->Flush()) {
                         CloseConnection(conn);
@@ -337,7 +334,7 @@ void Server::ProcessPendingTask()
     }
 }
 
-void Server::CloseConnection(Connection *conn)
+void Server::CloseConnection(std::shared_ptr<Connection> conn)
 {
     if (!conn)
         return;
@@ -346,12 +343,9 @@ void Server::CloseConnection(Connection *conn)
         std::lock_guard<std::mutex> lock(epoll_mtx);
         timer_.Remove(fd);
 
-        if (Conns_.count(fd))
-        {
-            auto it = Conns_.find(fd);
+        if (Conns_.count(fd)){
             M_epoll_.RemoveFd(fd, 0);
             Conns_.erase(fd);
-            close(fd);
             LOG_DEBUG("关闭连接: " + std::to_string(fd));
         }
     }

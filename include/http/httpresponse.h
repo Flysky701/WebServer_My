@@ -45,7 +45,6 @@ HttpResponse &HttpResponse::set_header(const std::string &key, const std::string
 }
 HttpResponse &HttpResponse::set_content(const std::string &content, const std::string &mime_type = "text/plain"){
     content_ = content;
-    // 为什么可以用 . 连接？ 
     return set_header("Content-Type", mime_type).set_header("Content-Length", std::to_string(content.size()));
 }
 HttpResponse &HttpResponse::set_keep_alive(bool keep_alive){

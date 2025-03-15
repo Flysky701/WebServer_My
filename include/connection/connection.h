@@ -32,6 +32,8 @@ class Connection{
         int fd_;
         std::vector<char> r_buffer;
         std::string w_buffer;
+        std::mutex r_mtx_;
+        std::mutex w_mtx_;
         
         void SetNonBlocking(){
             int flag = fcntl(fd_, F_GETFL, 0);
@@ -60,6 +62,7 @@ Connection::~Connection(){
     }
 }
 bool Connection::ReadData(){
+    std::lock_guard<std::mutex> lock(r_mtx_);
     std::vector<char> buffer(4096);
     ssize_t tot_read = 0;
     while (true)
@@ -82,9 +85,9 @@ bool Connection::ReadData(){
 }
 
 bool Connection::WriteData(const std::string& data){
+    std::lock_guard<std::mutex> lock(w_mtx_);
     try{
         w_buffer += data;
-        LOG_DEBUG("line 84 on conn");
         return true;
     }catch(const std::bad_alloc&){
         LOG_ERROR("line 87 on conn");
@@ -100,6 +103,7 @@ bool Connection::Flush()
     const char *data = w_buffer.data();
     size_t remaining = w_buffer.size();
 
+    std::lock_guard<std::mutex> lock(w_mtx_);
     while (remaining > 0)
     {
         ssize_t sent = send(fd_, data + total_sent, remaining, 0);
@@ -120,7 +124,7 @@ bool Connection::Flush()
         total_sent += sent;
         remaining -= sent;
     }
-
+    
     if (total_sent > 0){
         w_buffer.erase(0, total_sent);
     }
