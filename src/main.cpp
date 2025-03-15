@@ -2,8 +2,10 @@
 #include "log.h"  
 #include "server.h"
 
+
 int main(){
     Log::instance().init("Webserver.log", Log::INFO, Log::INFO);
+    // test_unit();
     try{
         Server server(8080);
         server.Run();

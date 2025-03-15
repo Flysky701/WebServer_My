@@ -2,3 +2,4 @@ wrk -t12 -c1000 -d30s http://localhost:8080/
 wrk -t2 -c100 -d10s http://localhost:8080/public/images/example.jpg
 wrk -t12 -c1000 -d30s http://localhost:8080/public/images/video-poster.jpg
 wrk -t12 -c1000 -d30s http://localhost:8080/public/media/sample.mp4
+wrk -c 5000 -t 16 -d 5s http://localhost:8080/

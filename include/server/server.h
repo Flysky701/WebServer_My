@@ -26,7 +26,7 @@
 class Server{
     public:
         explicit Server(int port)
-            : port_(port), running_(false), pool_(std::thread::hardware_concurrency() * 2),
+            : port_(port), running_(false), pool_(32),
               timer_([this](int fd) { HandleTimeout(fd); })
         {
                 InitSocket();
@@ -260,6 +260,7 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
 
         if (req.parse(buffer)) {
             conn->ClearReadBuffer();
+            
             try
             {
                 // 先尝试静态文件处理
@@ -293,7 +294,7 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
                 .set_header("Server", "MyServer/1.0");
 
             // 序列化响应
-            std::string resp_str = res.serialize();
+            std::string resp_str = std::move(res.serialize());
             LOG_DEBUG("响应内容:\n" + resp_str);
             {
                 std::lock_guard<std::mutex> lock(epoll_mtx);
