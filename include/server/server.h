@@ -10,8 +10,10 @@
 #include<unistd.h>
 #include<condition_variable>
 #include<memory>
+#include <signal.h>
 // net
 #include <sys/socket.h>
+#include <sys/signalfd.h>
 #include <netinet/in.h>
 //My
 #include"epollmanager.h"
@@ -26,11 +28,25 @@
 class Server{
     public:
         explicit Server(int port)
-            : port_(port), running_(false), pool_(32),
+            : port_(port), running_(false), pool_(32), close_fd_(-1),
               timer_([this](int fd) { HandleTimeout(fd); })
         {
-                InitSocket();
-                M_epoll_.AddFd(server_fd_, EPOLLIN);
+            sigset_t mask;
+            sigemptyset(&mask);
+            sigaddset(&mask, SIGINT);
+            sigaddset(&mask, SIGTERM);
+            sigaddset(&mask, SIGQUIT);
+            if (sigprocmask(SIG_BLOCK, &mask, nullptr) == -1) {
+                throw std::system_error(errno, std::system_category(), "sigprocmask失败");
+            }
+            close_fd_ = signalfd(-1, &mask, SFD_NONBLOCK);
+            if (close_fd_ == -1) {
+                throw std::system_error(errno, std::system_category(), "signalfd创建失败");
+            }
+
+            InitSocket();
+            M_epoll_.AddFd(server_fd_, EPOLLIN);
+            M_epoll_.AddFd(close_fd_, EPOLLIN);
         }
         ~Server() { Stop(); }
         void Run();
@@ -39,6 +55,17 @@ class Server{
             if(running_){
                 running_ = false;
                 close(server_fd_);
+                if(close_fd_ != -1){
+                    close(close_fd_);
+                    close_fd_ = -1;
+                }
+                {
+                    std::lock_guard<std::mutex>lock(task_mtx);
+                    for(auto& pair : Conns_)
+                        CloseConnection(pair.second);
+                    Conns_.clear();
+                }
+                ProcessPendingTask();
                 LOG_INFO("服务器关闭");
             }
         }
@@ -46,6 +73,7 @@ class Server{
     private:
         int port_;
         int server_fd_;
+        int close_fd_;
         bool running_;
         EpollManager M_epoll_;
         ThreadPool pool_;
@@ -85,6 +113,17 @@ void Server::Run()
         for (int i = 0; i < num_events; i++)
         {
             auto &events = M_epoll_.GetEvent()[i];
+
+            if(events.data.fd == close_fd_){
+                struct signalfd_siginfo info;
+                ssize_t s = read(close_fd_, &info, sizeof(info));
+                if (s != sizeof(info)) continue;
+                LOG_WARN("收到信号 %d (%s)", info.ssi_signo, strsignal(info.ssi_signo));
+                LOG_INFO("接收到信号 %d，关闭服务器", info.ssi_signo);
+                if (info.ssi_signo == SIGINT || info.ssi_signo == SIGTERM) 
+                    Stop(); // 触发退出
+            }
+            
             if (events.data.fd == server_fd_)
                 HandelConnection();
             else
@@ -96,7 +135,7 @@ void Server::Run()
 }
 void Server::InitSocket()
 {
-    // LOG_INFO("InitSocket");
+
     server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd_ < 0)
     {
