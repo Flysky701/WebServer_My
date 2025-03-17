@@ -58,8 +58,8 @@ private:
     std::string Lvstr(Level lv);
     template <typename... Args>
     std::string formatMessage(const std::string &msg, Args... args);
-    template <typename T>
-    std::string to_string_helper(T &&arg); 
+    template <typename F>
+    std::string to_string_helper(F &&arg); 
 };
 
 
@@ -132,10 +132,10 @@ void Log::formatLog(std::ostream &os, Level lv) {
        << '.' << std::setfill('0') << std::setw(3) << ms.count()
        << " [" << Lvstr(lv) << "] ";
 }
-template<typename T>
-std::string Log::to_string_helper(T &&args){
+template<typename F>
+std::string Log::to_string_helper(F &&args){
     std::ostringstream oss;
-    oss << std::forward<T>(args);
+    oss << std::forward<F>(args);
     return oss.str();
 }
 

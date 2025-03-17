@@ -20,7 +20,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include/filehandle
 )
 
-add_executable(main
+add_executable(server
     src/main.cpp
     # src/test_unit.cpp
 )
