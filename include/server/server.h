@@ -321,7 +321,7 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
             }
         }
     };
-    pool_.enqueue(fun);
+    pool_.enqueue(std::move(fun));
 }
 
 void Server::ProcessPendingTask()
