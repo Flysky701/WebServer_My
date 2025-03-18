@@ -5,7 +5,7 @@
 
 int main(){
     //                                    控制台     日志
-    Log::instance().init("Webserver.log", Log::INFO, Log::INFO);
+    Log::instance().init("Webserver.log", Log::INFO, Log::DEBUG);
     // test_unit();
     try{
         Server server(8080);
