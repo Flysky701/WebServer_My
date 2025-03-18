@@ -76,13 +76,16 @@ class ThreadPool{
         }
 };
 
-ThreadPool::ThreadPool(size_t thread_num = std::thread::hardware_concurrency(), size_t queue_size = 1024):
-    task_(queue_size), stop_(false)
+ThreadPool::ThreadPool(size_t thread_num = std::thread::hardware_concurrency(), 
+                       size_t queue_size = 1024):
+                       task_(queue_size), 
+                       stop_(false)
 {
     worker_.reserve(thread_num);
     for(size_t i = 0; i < thread_num; i ++)
         worker_.emplace_back([this]{workloop();});
 }
+
 void ThreadPool::stop(){
     if(!stop_.exchange(true)){
         cv_.notify_all();

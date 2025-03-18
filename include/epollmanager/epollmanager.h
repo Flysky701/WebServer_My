@@ -8,6 +8,7 @@
 #include "log.h"
 
 //Epoll的封装 
+
 class EpollManager{
     public:
         EpollManager();
@@ -34,6 +35,7 @@ EpollManager::EpollManager(){
     }
     LOG_INFO("成功创建EPOLL实例");
 }
+
 EpollManager::~EpollManager(){
     if(epoll_fd >= 0){
         // close(epoll_fd);
@@ -67,6 +69,7 @@ void EpollManager::ModifyFd(int fd, uint32_t events){
     
     LOG_DEBUG("修改 fd" + std::to_string(fd) + "到EPOLL中");
 }
+
 void EpollManager::RemoveFd(int fd, uint32_t events){
     // EPOLL_CTL_DEL 表示移除监控
     if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, nullptr) < 0){

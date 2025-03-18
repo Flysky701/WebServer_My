@@ -1,109 +1,120 @@
 #pragma once
 
 // struct
-#include<string.h>
-#include<vector>
-#include<queue>
-#include<unordered_map>  
-//condition
-#include<mutex>
-#include<unistd.h>
-#include<condition_variable>
-#include<memory>
+#include <string.h>
+#include <vector>
+#include <queue>
+#include <unordered_map>
+// condition
+#include <mutex>
+#include <unistd.h>
+#include <condition_variable>
+#include <memory>
 #include <signal.h>
 // net
 #include <sys/socket.h>
 #include <sys/signalfd.h>
 #include <netinet/in.h>
-//My
-#include"epollmanager.h"
-#include"connection.h"
-#include"threadpool.h"
-#include"httprequest.h"
-#include"httpresponse.h"
-#include"staticfilehandle.h"
-#include"timer.h"
-#include"log.h"
+// My
+#include "epollmanager.h"
+#include "connection.h"
+#include "threadpool.h"
+#include "httprequest.h"
+#include "httpresponse.h"
+#include "staticfilehandle.h"
+#include "timer.h"
+#include "log.h"
 
-class Server{
-    public:
-        explicit Server(int port)
-            : port_(port), running_(false), pool_(32), close_fd_(-1),
-              timer_([this](int fd) { HandleTimeout(fd); })
+class Server
+{
+public:
+    explicit Server(int port)
+        : port_(port),
+          running_(false),
+          pool_(32),
+          close_fd_(-1),
+          timer_([this](int fd)
+                 { HandleTimeout(fd); })
+    {
         {
             sigset_t mask;
             sigemptyset(&mask);
             sigaddset(&mask, SIGINT);
             sigaddset(&mask, SIGTERM);
             sigaddset(&mask, SIGQUIT);
-            if (sigprocmask(SIG_BLOCK, &mask, nullptr) == -1) {
+            if (sigprocmask(SIG_BLOCK, &mask, nullptr) == -1)
+            {
                 throw std::system_error(errno, std::system_category(), "sigprocmask失败");
             }
             close_fd_ = signalfd(-1, &mask, SFD_NONBLOCK);
-            if (close_fd_ == -1) {
+            if (close_fd_ == -1)
+            {
                 throw std::system_error(errno, std::system_category(), "signalfd创建失败");
             }
-
-            InitSocket();
-            M_epoll_.AddFd(server_fd_, EPOLLIN);
-            M_epoll_.AddFd(close_fd_, EPOLLIN);
         }
-        ~Server() { Stop(); }
-        void Run();
-        void Stop()
+
+        InitSocket();
+        M_epoll_.AddFd(server_fd_, EPOLLIN);
+        M_epoll_.AddFd(close_fd_, EPOLLIN);
+    }
+    ~Server() { Stop(); }
+    void Run();
+    void Stop()
+    {
+        if (running_)
         {
-            if(running_){
-                running_ = false;
-                close(server_fd_);
-                if(close_fd_ != -1){
-                    close(close_fd_);
-                    close_fd_ = -1;
-                }
-                {
-                    std::lock_guard<std::mutex>lock(task_mtx);
-                    for(auto& pair : Conns_)
-                        CloseConnection(pair.second);
-                    Conns_.clear();
-                }
-                ProcessPendingTask();
-                LOG_INFO("服务器关闭");
+            running_ = false;
+            close(server_fd_);
+            if (close_fd_ != -1)
+            {
+                close(close_fd_);
+                close_fd_ = -1;
             }
+            {
+                std::lock_guard<std::mutex> lock(task_mtx);
+                for (auto &pair : Conns_)
+                    CloseConnection(pair.second);
+                Conns_.clear();
+            }
+            ProcessPendingTask();
+            LOG_INFO("服务器关闭");
         }
+    }
 
-    private:
-        int port_;
-        int server_fd_;
-        int close_fd_;
-        bool running_;
-        EpollManager M_epoll_;
-        ThreadPool pool_;
-        Timer timer_;
-        static constexpr int CONN_TIMEOUT = 60000;
-        StaticFileHandler static_handler_{"public"};
-        Router route_;
+private:
+    int port_;
+    int server_fd_;
+    int close_fd_;
+    bool running_;
+    EpollManager M_epoll_;
+    ThreadPool pool_;
+    Timer timer_;
+    static constexpr int CONN_TIMEOUT = 60000;
+    StaticFileHandler static_handler_{"public"};
+    // Router route_;
 
-        std::unordered_map<int, std::shared_ptr<Connection>> Conns_;
-        std::mutex epoll_mtx;
-        std::mutex task_mtx;
-        std::queue<std::function<void()>> pending_tasks;
+    std::unordered_map<int, std::shared_ptr<Connection>> Conns_;
+    std::mutex epoll_mtx;
+    std::mutex task_mtx;
+    std::queue<std::function<void()>> pending_tasks;
 
 
-        void InitSocket();
-        void HandelConnection();
+    void InitSocket();
+    void HandelConnection();
         void HandleEvent(epoll_event& event);
-        void HandleTimeout(int fd);
-        bool HandleRead(Connection *conn);
+    void HandleTimeout(int fd);
+    bool HandleRead(Connection *conn);
         bool HandleWrite(Connection* conn);
-        // void SubmitToThreadPool(Connection* conn);
-        void SubmitToThreadPool(std::shared_ptr<Connection> conn);
-        void CloseConnection(std::shared_ptr<Connection> conn);
-        void ProcessPendingTask();
+    // void SubmitToThreadPool(Connection* conn);
+    void SubmitToThreadPool(std::shared_ptr<Connection> conn);
+    void CloseConnection(std::shared_ptr<Connection> conn);
+    void ProcessPendingTask();
 };
 
 void Server::Run()
 {
     running_ = true;
-    LOG_INFO("服务器于端口" + std::to_string(port_) + "开放");
+    LOG_INFO("服务器于端口 {} 开放", port_);
 
     while (running_)
     {
@@ -113,17 +124,19 @@ void Server::Run()
         for (int i = 0; i < num_events; i++)
         {
             auto &events = M_epoll_.GetEvent()[i];
-
-            if(events.data.fd == close_fd_){
+            // 信号推出机制
+            if (events.data.fd == close_fd_)
+            {
                 struct signalfd_siginfo info;
                 ssize_t s = read(close_fd_, &info, sizeof(info));
-                if (s != sizeof(info)) continue;
+                if (s != sizeof(info))
+                    continue;
                 LOG_WARN("收到信号 %d (%s)", info.ssi_signo, strsignal(info.ssi_signo));
                 LOG_INFO("接收到信号 %d，关闭服务器", info.ssi_signo);
-                if (info.ssi_signo == SIGINT || info.ssi_signo == SIGTERM) 
+                if (info.ssi_signo == SIGINT || info.ssi_signo == SIGTERM)
                     Stop(); // 触发退出
             }
-            
+
             if (events.data.fd == server_fd_)
                 HandelConnection();
             else
@@ -146,13 +159,13 @@ void Server::InitSocket()
     int flags = fcntl(server_fd_, F_GETFL, 0);
     if (flags == -1)
     {
-        LOG_ERROR("fcntl F_GETFL failed");
+        LOG_ERROR("fcntl F_GETFL 失败");
         throw std::system_error(errno, std::system_category());
     }
     if (fcntl(server_fd_, F_SETFL, flags | O_NONBLOCK) == -1)
     {
 
-        LOG_ERROR("fcntl F_SETFL non-blocking failed");
+        LOG_ERROR("fcntl F_SETFL 非阻塞失败");
         throw std::system_error(errno, std::system_category());
     }
     // SO_REUSEADDR允许端口重用，防止TIME_WAIT状态导致绑定失败
@@ -205,21 +218,22 @@ void Server::HandelConnection()
         M_epoll_.AddFd(client_fd, EPOLLET | EPOLLIN);
         timer_.Add(client_fd, CONN_TIMEOUT);
 
-        LOG_DEBUG("添加一个新连接" + std::to_string(client_fd));
+        LOG_DEBUG("添加一个新连接 {}", client_fd);
     }
     // LOG_INFO("HandelConnection_quit");
 }
+
 void Server::HandleTimeout(int fd)
 {
     std::lock_guard<std::mutex> lock(task_mtx);
     if (Conns_.count(fd))
     {
-        LOG_INFO("连接超时 fd： %d", fd);
+        LOG_INFO("连接超时 fd： {}", fd);
         CloseConnection(Conns_[fd]);
     }
     else
     {
-        LOG_DEBUG("连接 %d 已关闭，忽略超时", fd);
+        LOG_DEBUG("连接 {} 已关闭，忽略超时", fd);
     }
 }
 
@@ -227,16 +241,17 @@ bool Server::HandleRead(Connection *conn)
 {
     if (!conn->ReadData())
     {
-        LOG_DEBUG("读取于Fd" + std::to_string(conn->GetFd()) + "上失败");
+        LOG_DEBUG("读取在Fd {} 上失败", conn->GetFd());
         return false;
     }
     return true;
 }
+
 bool Server::HandleWrite(Connection *conn)
 {
     if (!conn->Flush())
     {
-        LOG_DEBUG("写操作在Fd" + std::to_string(conn->GetFd()) + "上失败");
+        LOG_DEBUG("写操作在Fd {} 上失败", conn->GetFd());
         return false;
     }
     if (conn->HasPendingWrite())
@@ -252,54 +267,68 @@ bool Server::HandleWrite(Connection *conn)
     return true;
 }
 
-void Server::HandleEvent(epoll_event &event) {
+void Server::HandleEvent(epoll_event &event)
+{
     int fd = event.data.fd;
     std::shared_ptr<Connection> conn;
     {
         std::lock_guard<std::mutex> lock(task_mtx);
         auto it = Conns_.find(fd);
-        if (it == Conns_.end()) return;
+        if (it == Conns_.end())
+            return;
         conn = it->second;
     }
 
-    if (event.events & (EPOLLERR | EPOLLHUP)) {
+    if (event.events & (EPOLLERR | EPOLLHUP))
+    {
         CloseConnection(conn);
         return;
     }
 
-    if (event.events & EPOLLIN) {
-        if (!HandleRead(conn.get())) {
+    if (event.events & EPOLLIN)
+    {
+        if (!HandleRead(conn.get()))
+        {
             CloseConnection(conn);
-        } else {
+        }
+        else
+        {
             timer_.Add(fd, CONN_TIMEOUT);
             SubmitToThreadPool(conn);
         }
     }
 
-    if (event.events & EPOLLOUT) {
-        if (!HandleWrite(conn.get())) {
+    if (event.events & EPOLLOUT)
+    {
+        if (!HandleWrite(conn.get()))
+        {
             CloseConnection(conn);
-        } else {
+        }
+        else
+        {
             std::lock_guard<std::mutex> lock(epoll_mtx);
             timer_.Add(fd, CONN_TIMEOUT);
-            if (!conn->HasPendingWrite()) {
+            if (!conn->HasPendingWrite())
+            {
                 M_epoll_.ModifyFd(fd, EPOLLIN | EPOLLET);
             }
         }
     }
 }
 
-void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn) 
+void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
 {
-    auto fun = [this, conn]() {
+    auto fun = [this, conn]()
+    {
         HttpRequest req;
         HttpResponse res;
         bool request_handled = false;
         const auto &buffer = conn->GetReadBuffer();
 
-        if (req.parse(buffer)) {
+        if (req.parse(buffer))
+        {
             conn->ClearReadBuffer();
-            
+
             try
             {
                 // 先尝试静态文件处理
@@ -310,10 +339,10 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
                 }
 
                 // 如果静态文件未处理，尝试路由处理
-                if (!request_handled)
-                {
-                    request_handled = route_.handle(req, res);
-                }
+                // if (!request_handled)
+                // {
+                //     request_handled = route_.handle(req, res);
+                // }
 
                 // 最终未匹配的处理
                 if (!request_handled)
@@ -334,6 +363,7 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
 
             // 序列化响应
             std::string resp_str = std::move(res.serialize());
+            // 特别
             LOG_DEBUG("响应内容:\n" + resp_str);
             {
                 std::lock_guard<std::mutex> lock(epoll_mtx);
@@ -342,8 +372,8 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
             // 提交Flush及事件修改到主线程
             {
                 std::lock_guard<std::mutex> t_lock(task_mtx);
-                pending_tasks.push([this,  fd = conn->GetFd()]()
-                {
+                pending_tasks.push([this, fd = conn->GetFd()]()
+                                   {
                     if (!Conns_.count(fd)) return;
                     auto conn = Conns_[fd];
                     std::lock_guard<std::mutex> e_lock(epoll_mtx);
@@ -355,8 +385,7 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
                     if (conn->HasPendingWrite()) {
                         events |= EPOLLOUT;
                     }
-                    M_epoll_.ModifyFd(conn->GetFd(), events); 
-                });
+                    M_epoll_.ModifyFd(conn->GetFd(), events); });
             }
         }
     };
@@ -383,7 +412,8 @@ void Server::CloseConnection(std::shared_ptr<Connection> conn)
         std::lock_guard<std::mutex> lock(epoll_mtx);
         timer_.Remove(fd);
 
-        if (Conns_.count(fd)){
+        if (Conns_.count(fd))
+        {
             M_epoll_.RemoveFd(fd, 0);
             Conns_.erase(fd);
             LOG_DEBUG("关闭连接: " + std::to_string(fd));
