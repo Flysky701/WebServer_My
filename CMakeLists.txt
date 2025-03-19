@@ -30,8 +30,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         )
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         add_compile_options(
-            -fvectorize          # 自动向量化循环
-            -fslp-vectorize      # 超级字级别并行化
+            -fvectorize
+            -fslp-vectorize
         )
     endif()
 

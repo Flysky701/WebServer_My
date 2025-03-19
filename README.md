@@ -4,7 +4,7 @@ TODO：fileserver
 +零拷贝 + ?
 TODO：SQL登录查询
 TODO: 内存池
-TODO：优化连接数， 提升 QPS 目前 8000/s
+TODO：优化连接数， 提升 QPS 目前 27000/s
 
 DONE：异步日志 
 DONE：无锁线程池
