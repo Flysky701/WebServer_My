@@ -12,6 +12,31 @@
 
 #include "log.h"
 
+class SqlConnPool;
+
+class SqlGuard
+{
+public:
+    explicit SqlGuard(SqlConnPool &pool) : pool_(&pool), conn_(pool.GetConn()) {};
+
+    SqlGuard(const SqlGuard &) = delete;
+    SqlGuard operator=(const SqlGuard &) = delete;
+
+    ~SqlGuard(){
+        if (pool_ && conn_)
+            pool_->FreeConn(conn_);
+    }
+
+    sql::Connection *operator->() const{ return conn_.get();}
+    sql::Connection &operator*() const{ return *conn_;}
+
+private:
+    SqlConnPool *pool_;
+    std::shared_ptr<sql::Connection> conn_;
+};
+
+// explicit SqlGua
+
 class SqlConnPool
 {
 public:
@@ -24,8 +49,8 @@ public:
               const std::string &user,
               const std::string &password,
               const std::string &db,
-              int port = 3306,
-              int poolSize = 10);
+              int port,
+              int poolSize);
     std::shared_ptr<sql::Connection> MakeConn();
     std::shared_ptr<sql::Connection> GetConn();
     void FreeConn(std::shared_ptr<sql::Connection> conn);
@@ -80,12 +105,12 @@ void SqlConnPool::init(const std::string &host,
                        const std::string &user,
                        const std::string &password,
                        const std::string &db,
-                       int port,
-                       int poolSize) : host_(host),
-                                       user_(user),
-                                       password_(password),
-                                       database_(db),
-                                       port_(port)
+                       int port = 8080,
+                       int poolSize = 10) : host_(host),
+                                            user_(user),
+                                            password_(password),
+                                            database_(db),
+                                            port_(port)
 {
 
     std::lock_guard<std::mutex> lock(pool_mtx_);
@@ -95,10 +120,7 @@ void SqlConnPool::init(const std::string &host,
         driver_ = sql::mysql::get_mysql_driver_instance();
 
         for (int i = 0; i < poolSize; ++i)
-        {
-            auto conn = MakeConn();
-            Conns_.push(conn);
-        }
+            Conns_.push(MakeConn());
     }
     catch (const sql::SQLException &e)
     {
@@ -126,6 +148,7 @@ std::shared_ptr<sql::Connection> SqlConnPool::GetConn()
     Conns_.pop();
     return conn;
 }
+
 void SqlConnPool::FreeConn(std::shared_ptr<sql::Connection> conn)
 {
     std::lock_guard<std::mutex> lock(pool_mtx_);
@@ -137,8 +160,7 @@ void SqlConnPool::FreeConn(std::shared_ptr<sql::Connection> conn)
         }
         else
         {
-            auto new_conn = MakeConn();
-            Conns_.push(new_conn);
+            Conns_.push(MakeConn());
         }
     }
     catch (const sql::SQLException &e)
