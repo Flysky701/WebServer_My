@@ -21,6 +21,9 @@
 #include "threadpool.h"
 #include "httprequest.h"
 #include "httpresponse.h"
+#include "authhandler.h"
+#include "userdao.h"
+#include "sqlconnpool.h"
 #include "staticfilehandle.h"
 #include "timer.h"
 #include "log.h"
@@ -33,6 +36,9 @@ public:
           running_(false),
           pool_(32),
           close_fd_(-1),
+          sqlConnPool_(SqlConnPool::instance()),
+          userDao_(sqlConnPool_),
+          authHandler_(userDao_),
           timer_([this](int fd)
                  { HandleTimeout(fd); })
     {
@@ -89,6 +95,9 @@ private:
     EpollManager M_epoll_;
     ThreadPool pool_;
     Timer timer_;
+    AuthHandler authHandler_;
+    SqlConnPool& sqlConnPool_;
+    UserDao& userDao_;
     static constexpr int CONN_TIMEOUT = 60000;
     StaticFileHandler static_handler_{"public"};
     // Router route_;
@@ -332,7 +341,6 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
             try
             {
                 // 先尝试静态文件处理
-                // LOG_DEBUG(req.method() + req.path() + req.version());
                 if (req.method() == "GET" || req.method() == "HEAD")
                 {
                     request_handled = static_handler_.handle_request(req, res);
@@ -364,7 +372,7 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
             // 序列化响应
             std::string resp_str = std::move(res.serialize());
             // 特别
-            LOG_DEBUG("响应内容:\n" + resp_str);
+            // LOG_DEBUG("响应内容:\n" + resp_str);
             {
                 std::lock_guard<std::mutex> lock(epoll_mtx);
                 conn->WriteData(resp_str);

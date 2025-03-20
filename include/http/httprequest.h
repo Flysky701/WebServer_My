@@ -35,15 +35,16 @@ class HttpRequest
 
         static std::string get_file_extension(const std::string &path);
         static std::string get_mime_type(const std::string &path);
+        
         FileInfo get_file_info()const{
             FileInfo result = {get_mime_type(path_), get_file_extension(path_)};
             return result;
         }
 
-        // 动态路由
-        // const std::unordered_map<std::string, std::string> &query_params() const { return query_params_; };
+        const std::unordered_map<std::string, std::string> &query_params() const { return query_params_; };
+        const std::unordered_map<std::string, std::string> &form_params() const { return form_params_; };
+        // 动态路由， 部分完成
         // const std::unordered_map<std::string, std::string> &path_params() const { return path_params_; };
-        // const std::unordered_map<std::string, std::string> &form_params() const { return form_params_; };
 
     private:
         // state
@@ -58,11 +59,31 @@ class HttpRequest
 
         bool parse_request_line(std::string_view line);
         void parse_headers(std::string_view line);
+        void parse_body(std::string_view line);
+        static std::string url_decode(std::string_view str);
+        
+        void parse_key_value(std::string_view &str, std::unordered_map<std::string, std::string> &param_){
+            size_t param_start = 0;
+            while(param_start < str.size()){
+                size_t param_end = str.find('&', param_start);
+                if(param_end == string_view::npos)
+                param_end = str.size();
+                string_view param = str.substr(param_start, param_end - param_start);
+                size_t eq_pos = param.find('=');
+            
+                if(eq_pos != string_view::npos){
+                    string key = url_decode(param.substr(0, eq_pos));
+                    string value = url_decode(param.substr(eq_pos + 1));
+                    param_.emplace(key, value); 
+                }
+                param_start = param_end + 1;
+            }
+        }
 
-        // 动态路由，未完成
-        // std::unordered_map<std::string, std::string> query_params_;
+        std::unordered_map<std::string, std::string> query_params_;
+        std::unordered_map<std::string, std::string> form_params_;
+        // 动态路由，部分完成
         // std::unordered_map<std::string, std::string> path_params_;
-        // std::unordered_map<std::string, std::string> form_params_;
 };
 
 using std::string;
@@ -103,8 +124,7 @@ bool HttpRequest::parse(const char *data, size_t len)
     std::string_view input(data, len);
     size_t pos = 0;
 
-    while (pos < input.size() && state_ != PARSE_ERROR)
-    {
+    while (pos < input.size() && state_ != PARSE_ERROR && state_ != PARSE_COMPLETE){
         size_t line_end = input.find("\r\n", pos);
         if (line_end == string::npos)
             break;
@@ -112,11 +132,9 @@ bool HttpRequest::parse(const char *data, size_t len)
         string_view line = input.substr(pos, line_end - pos);
         pos = line_end + 2;
 
-        switch (state_)
-        {
+        switch (state_){
         case PARSE_LINE:
-            if (parse_request_line(line) == false)
-            {
+            if (parse_request_line(line) == false){
                 state_ = PARSE_ERROR;
                 return false;
             }
@@ -124,13 +142,16 @@ bool HttpRequest::parse(const char *data, size_t len)
                 state_ = PARSE_HEADERS;
             break;
         case PARSE_HEADERS:
-            if (line.empty())
-            {
-                // 静态文件不需要处理body，直接完成解析
-                state_ = PARSE_COMPLETE;
-                return true;
-            }
-            parse_headers(line);
+            if (line.empty()){
+                if(method_ == "POST" || method_ == "PUT") {
+                    state_ = PARSE_BODY;
+                }else 
+                    state_ = PARSE_COMPLETE;
+            }else 
+                parse_headers(line);
+            break;
+        case PARSE_BODY:
+            parse_body(line);
             break;
         default:
             return false;
@@ -154,14 +175,14 @@ bool HttpRequest::parse_request_line(string_view line)
 
     string_view full_path = line.substr(path_start, path_end - path_start);
     size_t query_start = full_path.find('?');
-
-    path_ = full_path.substr(0, query_start);
-
-    /*
+    
     if(query_start != string_view::npos){
-        ...
+        path_ = full_path.substr(0, query_start);
+        string_view query_str = full_path.substr(query_start + 1);
+        parse_key_value(query_str, query_params_);
+    }else {
+        path_ = full_path;
     }
-    */
 
     size_t version_start = path_end + 1;
     version_ = line.substr(version_start);
@@ -181,10 +202,36 @@ void HttpRequest::parse_headers(string_view line)
     transform(key.begin(), key.end(), key.begin(), ::tolower);
 
     string_view value = line.substr(colon + 1);
+    
     value.remove_prefix(std::min(value.find_first_not_of(" "), value.size()));
     value.remove_suffix(value.size() - std::min(value.find_last_not_of(" \r") + 1, value.size()));
 
     headers_[key] = value;
+}
+
+void HttpRequest::parse_body(string_view line){
+    if(headers_.count("content-type") && 
+    headers_["content-type"].find("x-www-form-urlencoded") != string::npos){
+        parse_key_value(line, form_params_);
+    }
+}
+
+string HttpRequest::url_decode(string_view str){
+    string res;
+    for(size_t i = 0; i < str.size(); i ++){
+        if(str[i] == '%' && i+2 < str.size()){
+            int hex_val;
+            if(sscanf(str.substr(i+1,2).data(), "%02x", &hex_val) == 1){
+                res += static_cast<char>(hex_val);
+                i += 2;
+            }
+        }
+        else if(str[i] == '+')
+            res += ' ';
+        else 
+            res += str[i];
+    }
+    return res;
 }
 
 bool HttpRequest::keep_alive() const

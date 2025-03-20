@@ -13,6 +13,15 @@ using std::vector;
 
 class Router
 {
-    public:
-    
+    public: 
+        void add_route(const std::string& path, const std::string method,
+            std::function<void(const HttpRequest&, const HttpResponse&)> handler){
+            routes_[path][method] = handler;
+        }
+    private:
+        std::unordered_map<
+            std::string, std::unordered_map<
+            std::string, std::function<void(const HttpRequest&, const HttpResponse&)>>>
+            
+
 };
