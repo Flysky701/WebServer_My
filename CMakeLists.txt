@@ -64,6 +64,7 @@ include_directories(
 )
 # 可执行文件配置
 add_executable(server
+    include/server/server.cpp
     src/main.cpp
     # src/test_unit.cpp  # 按需启用
 )

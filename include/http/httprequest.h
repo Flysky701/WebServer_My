@@ -15,8 +15,8 @@ class HttpRequest
             PARSE_LINE,    // 解析请求行
             PARSE_HEADERS, // 解析头部
             PARSE_BODY,    // 解析正文
-            PARSE_COMPLETE,
-            PARSE_ERROR    // 错误状态
+            PARSE_COMPLETE,// 解析完成
+            PARSE_ERROR    // 解析错误
         };
         bool parse(const char *data, size_t len);
         bool parse(const std::vector<char> &data){return parse(data.data(), data.size());}

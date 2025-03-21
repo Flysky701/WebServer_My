@@ -12,31 +12,6 @@
 
 #include "log.h"
 
-class SqlConnPool;
-
-class SqlGuard
-{
-public:
-    explicit SqlGuard(SqlConnPool &pool) : pool_(&pool), conn_(pool.GetConn()) {};
-
-    SqlGuard(const SqlGuard &) = delete;
-    SqlGuard operator=(const SqlGuard &) = delete;
-
-    ~SqlGuard(){
-        if (pool_ && conn_)
-            pool_->FreeConn(conn_);
-    }
-
-    sql::Connection *operator->() const{ return conn_.get();}
-    sql::Connection &operator*() const{ return *conn_;}
-
-private:
-    SqlConnPool *pool_;
-    std::shared_ptr<sql::Connection> conn_;
-};
-
-// explicit SqlGua
-
 class SqlConnPool
 {
 public:
@@ -45,12 +20,11 @@ public:
         static SqlConnPool instance;
         return instance;
     }
-    void init(const std::string &host,
+    void init(const std::string &host, 
               const std::string &user,
-              const std::string &password,
+              const std::string &password, 
               const std::string &db,
-              int port,
-              int poolSize);
+              int port, int poolSize);
     std::shared_ptr<sql::Connection> MakeConn();
     std::shared_ptr<sql::Connection> GetConn();
     void FreeConn(std::shared_ptr<sql::Connection> conn);
@@ -79,16 +53,13 @@ private:
 SqlConnPool::~SqlConnPool()
 {
     std::lock_guard<std::mutex> lock(pool_mtx_);
-    while (!Conns_.empty())
-    {
-        try
-        {
+    while (!Conns_.empty()){
+        try{
             auto conn = Conns_.front();
             if (conn)
                 conn->close();
         }
-        catch (const sql::SQLException &e)
-        {
+        catch (const sql::SQLException &e){
             LOG_ERROR("数据库连接关闭失败:" + std::string(e.what()));
             throw std::runtime_error("数据库连接关闭失败: " + std::string(e.what()));
         }
@@ -106,24 +77,19 @@ void SqlConnPool::init(const std::string &host,
                        const std::string &password,
                        const std::string &db,
                        int port = 8080,
-                       int poolSize = 10) : host_(host),
-                                            user_(user),
-                                            password_(password),
-                                            database_(db),
-                                            port_(port)
-{
+                       int poolSize = 10){
 
     std::lock_guard<std::mutex> lock(pool_mtx_);
 
-    try
-    {
+    host_ = host, user_ = user, password_ = password;
+    database_ = db, port_ = port;
+    try{
         driver_ = sql::mysql::get_mysql_driver_instance();
 
         for (int i = 0; i < poolSize; ++i)
             Conns_.push(MakeConn());
     }
-    catch (const sql::SQLException &e)
-    {
+    catch (const sql::SQLException &e){
         // 重新抛出异常
         LOG_ERROR("数据库连接初始化失败:" + std::string(e.what()));
         throw std::runtime_error("数据库连接初始化失败: " + std::string(e.what()));
@@ -135,10 +101,8 @@ std::shared_ptr<sql::Connection> SqlConnPool::GetConn()
 
     std::unique_lock<std::mutex> lock(pool_mtx_);
     // 超时
-    while (Conns_.empty())
-    {
-        if (cv_.wait_for(lock, std::chrono::seconds(5)) == std::cv_status::timeout)
-        {
+    while (Conns_.empty()){
+        if (cv_.wait_for(lock, std::chrono::seconds(5)) == std::cv_status::timeout){
             LOG_ERROR("数据库连接超时");
             throw std::runtime_error("数据库连接超时");
         }
@@ -170,3 +134,24 @@ void SqlConnPool::FreeConn(std::shared_ptr<sql::Connection> conn)
     }
     cv_.notify_one();
 }
+
+class SqlGuard
+{
+public:
+    explicit SqlGuard(SqlConnPool &pool) : pool_(&pool), conn_(pool.GetConn()) {};
+
+    SqlGuard(const SqlGuard &) = delete;
+    SqlGuard operator=(const SqlGuard &) = delete;
+
+    ~SqlGuard(){
+        if (pool_ && conn_)
+            pool_->FreeConn(conn_);
+    }
+
+    sql::Connection *operator->() const{ return conn_.get();}
+    sql::Connection &operator*() const{ return *conn_;}
+
+private:
+    SqlConnPool *pool_;
+    std::shared_ptr<sql::Connection> conn_;
+};

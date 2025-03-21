@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户注册</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .register-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .password-hint {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="register-container">
+        <h2 class="form-title">用户注册</h2>
+        <form action="/register" method="POST">
+            <div class="form-group">
+                <input type="text" name="username" placeholder="用户名" required>
+            </div>
+            <div class="form-group">
+                <input type="password" name="password" placeholder="密码 (至少6位)" required>
+                <div class="password-hint">密码必须包含字母和数字</div>
+            </div>
+            <button type="submit" class="submit-btn">注册</button>
+        </form>
+        <div class="nav-link">
+            已有账号？<a href="/login.html">立即登录</a>
+        </div>
+    </div>
+</body>
+
+</html>

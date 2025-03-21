@@ -14,7 +14,7 @@ class AuthHandler{
         void handle_register(const HttpRequest &req, HttpResponse &res);
 
     private:
-        UserDao& dao_;
+        UserDao &dao_;
 
         void build_success_response(HttpResponse &res, const std::string &msg){
             res.set_status(200)

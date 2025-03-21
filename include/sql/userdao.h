@@ -17,7 +17,8 @@ class UserDao{
         SqlConnPool& pool_;
 };
 
-bool UserDao::create(const std::string &username, const std::string &password){
+bool UserDao::create(const std::string &username, const std::string &password)
+{
     SqlGuard conn(pool_);
 
     try{
