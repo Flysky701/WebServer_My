@@ -45,6 +45,7 @@ public:
     {
 
         InitSocket();
+        Routes_Init();
         M_epoll_.AddFd(server_fd_, EPOLLIN);
     }
 

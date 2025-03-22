@@ -125,13 +125,19 @@ bool HttpRequest::parse(const char *data, size_t len)
     size_t pos = 0;
 
     while (pos < input.size() && state_ != PARSE_ERROR && state_ != PARSE_COMPLETE){
-        size_t line_end = input.find("\r\n", pos);
-        if (line_end == string::npos)
-            break;
-
-        string_view line = input.substr(pos, line_end - pos);
-        LOG_DEBUG("查看req——line{}", line);
-        pos = line_end + 2;
+        string_view line;
+        if(state_ == PARSE_BODY){
+            line = input.substr(pos);
+            LOG_DEBUG("show:{}", line);
+        }else {
+            size_t line_end = input.find("\r\n", pos);
+            if (line_end == string::npos)
+                break;
+    
+            line = input.substr(pos, line_end - pos);
+            LOG_DEBUG("查看req——line:{}", line);
+            pos = line_end + 2;
+        }
 
         switch (state_){
         case PARSE_LINE:
@@ -153,11 +159,15 @@ bool HttpRequest::parse(const char *data, size_t len)
             break;
         case PARSE_BODY:
             parse_body(line);
+            state_ = PARSE_COMPLETE;
             break;
         default:
             return false;
         }
+        LOG_DEBUG("state_为{}", state_);
     }
+    LOG_DEBUG("state_为{}", state_);
+
     return state_ == PARSE_COMPLETE;
 }
 
