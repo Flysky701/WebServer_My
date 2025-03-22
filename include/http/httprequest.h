@@ -66,14 +66,14 @@ class HttpRequest
             size_t param_start = 0;
             while(param_start < str.size()){
                 size_t param_end = str.find('&', param_start);
-                if(param_end == string_view::npos)
+                if(param_end == std::string_view::npos)
                 param_end = str.size();
-                string_view param = str.substr(param_start, param_end - param_start);
+                std::string_view param = str.substr(param_start, param_end - param_start);
                 size_t eq_pos = param.find('=');
             
-                if(eq_pos != string_view::npos){
-                    string key = url_decode(param.substr(0, eq_pos));
-                    string value = url_decode(param.substr(eq_pos + 1));
+                if(eq_pos != std::string_view::npos){
+                    std::string key = url_decode(param.substr(0, eq_pos));
+                    std::string value = url_decode(param.substr(eq_pos + 1));
                     param_.emplace(key, value); 
                 }
                 param_start = param_end + 1;
@@ -130,6 +130,7 @@ bool HttpRequest::parse(const char *data, size_t len)
             break;
 
         string_view line = input.substr(pos, line_end - pos);
+        LOG_DEBUG("查看req——line{}", line);
         pos = line_end + 2;
 
         switch (state_){
@@ -187,13 +188,14 @@ bool HttpRequest::parse_request_line(string_view line)
     size_t version_start = path_end + 1;
     version_ = line.substr(version_start);
     
-    LOG_DEBUG("[解析阶段] 原始请求路径: " + std::string(path_));
+    LOG_DEBUG("[解析阶段] 原始请求路径: {}, {}, {}", method_, path_, version_);
 
     return method_.size() && path_.size() && version_.size();
 }
 
 void HttpRequest::parse_headers(string_view line)
 {
+    LOG_DEBUG("parse_headers函数");
     size_t colon = line.find(':');
     if (colon == string_view::npos)
         return;
@@ -210,6 +212,7 @@ void HttpRequest::parse_headers(string_view line)
 }
 
 void HttpRequest::parse_body(string_view line){
+    LOG_DEBUG("parse_body函数");
     if(headers_.count("content-type") && 
     headers_["content-type"].find("x-www-form-urlencoded") != string::npos){
         parse_key_value(line, form_params_);

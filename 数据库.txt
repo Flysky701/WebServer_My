@@ -1,5 +1,6 @@
 
-mysql -u root
+mysql -u root -p
+123456
 
 CREATE DATABASE IF NOT EXISTS mydb;
 

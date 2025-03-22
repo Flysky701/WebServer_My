@@ -38,7 +38,6 @@ private:
     // 连接队列
     std::queue<std::shared_ptr<sql::Connection>> Conns_;
 
-    // 同步机制
     std::mutex pool_mtx_;
     std::condition_variable cv_;
 
@@ -61,7 +60,7 @@ SqlConnPool::~SqlConnPool()
         }
         catch (const sql::SQLException &e){
             LOG_ERROR("数据库连接关闭失败:" + std::string(e.what()));
-            throw std::runtime_error("数据库连接关闭失败: " + std::string(e.what()));
+            break;
         }
     }
 }
@@ -85,7 +84,6 @@ void SqlConnPool::init(const std::string &host,
     database_ = db, port_ = port;
     try{
         driver_ = sql::mysql::get_mysql_driver_instance();
-
         for (int i = 0; i < poolSize; ++i)
             Conns_.push(MakeConn());
     }
