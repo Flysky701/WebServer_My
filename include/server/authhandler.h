@@ -59,8 +59,9 @@ void AuthHandler::handle_login(const HttpRequest &req, HttpResponse &res){
         build_error_response(res, 500, "Internal server error");
     }
 }
+
 void AuthHandler::handle_register(const HttpRequest &req, HttpResponse &res){
-    LOG_DEBUG("进入函数{}", "handle_register");
+    // LOG_DEBUG("进入函数{}", "handle_register");
     if(req.method() != "POST"){
         build_error_response(res, 405, "Method Not Allowed");
         return;
@@ -77,7 +78,7 @@ void AuthHandler::handle_register(const HttpRequest &req, HttpResponse &res){
     std::string password = password_it->second;
 
     try {
-        LOG_DEBUG("AUTH层创建用户");
+        // LOG_DEBUG("AUTH层创建用户");
         if (dao_.create(username, password)) {
             build_success_response(res, "User registered");
         } else {

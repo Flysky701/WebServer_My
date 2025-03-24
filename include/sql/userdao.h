@@ -38,18 +38,18 @@ bool UserDao::create(const std::string &username, const std::string &password)
     }
     return false;
 }
-bool  UserDao::validata(const std::string &username, const std::string &password){
+bool UserDao::validata(const std::string &username, const std::string &password){
     SqlGuard conn(pool_);
     try{
         auto stmt = conn->prepareStatement(
             "SELECT password FROM users WHERE username = ?");
         stmt->setString(1, username);
         auto res = stmt->executeQuery();
-        LOG_DEBUG("验证用户中");
+        // LOG_DEBUG("验证用户中");
         if(res -> next()){
             return res->getString("password") == password;
         }
-        LOG_DEBUG("验证用户失败");
+        // LOG_DEBUG("验证用户失败");
         return false;
     }
     catch (sql::SQLException &e)

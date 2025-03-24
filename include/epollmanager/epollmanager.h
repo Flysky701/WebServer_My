@@ -67,7 +67,7 @@ void EpollManager::ModifyFd(int fd, uint32_t events){
         throw std::system_error(errno, std::system_category());
     }
     
-    LOG_DEBUG("修改 fd" + std::to_string(fd) + "到EPOLL中");
+    LOG_DEBUG("修改 fd {} 到EPOLL中", fd);
 }
 
 void EpollManager::RemoveFd(int fd, uint32_t events){
@@ -76,7 +76,7 @@ void EpollManager::RemoveFd(int fd, uint32_t events){
         LOG_ERROR("从EPOLL移除FD失败");
         throw std::system_error(errno, std::system_category());
     }
-    LOG_DEBUG("Removed fd " + std::to_string(fd) + " from epoll");
+    LOG_DEBUG("从EPOLL中移除fd {}", fd);
 }
 
 int EpollManager::WaitEvents(int timeout = -1){

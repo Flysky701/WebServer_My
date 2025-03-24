@@ -52,13 +52,13 @@ Connection::Connection(int socket_fd) : fd_(socket_fd){
     if (fd_ < 0) 
         throw std::invalid_argument("Invalid socket descriptor");
     SetNonBlocking();
-    LOG_DEBUG("创建连接: " + std::to_string(fd_));
+    LOG_DEBUG("创建连接 {}" , fd_);
 }
 
 Connection::~Connection(){
     if(fd_ >= 0){
         close(fd_);
-        LOG_DEBUG("关闭连接" + std::to_string(fd_));
+        LOG_DEBUG("关闭连接 {}" , fd_);
     }
 }
 bool Connection::ReadData(){
@@ -68,6 +68,7 @@ bool Connection::ReadData(){
     while (true)
     {
         ssize_t r_bytes = recv(fd_, buffer.data(), buffer.size(), MSG_DONTWAIT);
+        
         if (r_bytes > 0){
             tot_read += r_bytes;
             r_buffer.insert(r_buffer.end(), buffer.data(), buffer.data() + r_bytes);
@@ -80,7 +81,7 @@ bool Connection::ReadData(){
             return false;
         }
     }
-    LOG_DEBUG("读取到 " + std::to_string(tot_read) + " 字节");
+    LOG_DEBUG("读取到 {} 字节", tot_read);
     return true;
 }
 

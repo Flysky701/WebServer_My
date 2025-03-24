@@ -64,20 +64,19 @@ private:
 
 
 
-void Log::init(const std::string& filepath = "./webserver.log", Level consoleLevel = DEBUG, Level currentLevel = DEBUG)
-{
+void Log::init(const std::string& filepath = "./webserver.log", Level consoleLevel = DEBUG, Level currentLevel = DEBUG){
+    
     std::lock_guard<std::mutex> lock(mtx_);
     file_.open(filepath, std::ios::app);
     
     if (!file_.is_open()) {
-        std::cerr << "Failed to open log file: " << filepath << std::endl;
+        std::cerr << "无法打开文件: " << filepath << std::endl;
     }
     
     lv_console = consoleLevel;
     lv_current = currentLevel;
 
     worker_ = std::thread(&Log::ProcessLogs, this);
-
 }
 
 template<typename... Args>

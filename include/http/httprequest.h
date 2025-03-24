@@ -10,8 +10,7 @@
 class HttpRequest
 {
     public:
-        enum ParseState
-        {
+        enum ParseState{
             PARSE_LINE,    // 解析请求行
             PARSE_HEADERS, // 解析头部
             PARSE_BODY,    // 解析正文
@@ -43,8 +42,6 @@ class HttpRequest
 
         const std::unordered_map<std::string, std::string> &query_params() const { return query_params_; };
         const std::unordered_map<std::string, std::string> &form_params() const { return form_params_; };
-        // 动态路由， 部分完成
-        // const std::unordered_map<std::string, std::string> &path_params() const { return path_params_; };
 
     private:
         // state
@@ -82,8 +79,6 @@ class HttpRequest
 
         std::unordered_map<std::string, std::string> query_params_;
         std::unordered_map<std::string, std::string> form_params_;
-        // 动态路由，部分完成
-        // std::unordered_map<std::string, std::string> path_params_;
 };
 
 using std::string;
@@ -135,7 +130,6 @@ bool HttpRequest::parse(const char *data, size_t len)
                 break;
     
             line = input.substr(pos, line_end - pos);
-            LOG_DEBUG("查看req——line:{}", line);
             pos = line_end + 2;
         }
 
@@ -197,15 +191,13 @@ bool HttpRequest::parse_request_line(string_view line)
 
     size_t version_start = path_end + 1;
     version_ = line.substr(version_start);
-    
-    LOG_DEBUG("[解析阶段] 原始请求路径: {}, {}, {}", method_, path_, version_);
 
     return method_.size() && path_.size() && version_.size();
 }
 
 void HttpRequest::parse_headers(string_view line)
 {
-    LOG_DEBUG("parse_headers函数");
+    // LOG_DEBUG("parse_headers函数");
     size_t colon = line.find(':');
     if (colon == string_view::npos)
         return;
@@ -222,7 +214,7 @@ void HttpRequest::parse_headers(string_view line)
 }
 
 void HttpRequest::parse_body(string_view line){
-    LOG_DEBUG("parse_body函数");
+    // LOG_DEBUG("parse_body函数");
     if(headers_.count("content-type") && 
     headers_["content-type"].find("x-www-form-urlencoded") != string::npos){
         parse_key_value(line, form_params_);
@@ -234,7 +226,7 @@ string HttpRequest::url_decode(string_view str){
     for(size_t i = 0; i < str.size(); i ++){
         if(str[i] == '%' && i+2 < str.size()){
             int hex_val;
-            if(sscanf(str.substr(i+1,2).data(), "%02x", &hex_val) == 1){
+            if(sscanf(str.substr(i + 1, 2).data(), "%02x", &hex_val) == 1){
                 res += static_cast<char>(hex_val);
                 i += 2;
             }
@@ -250,8 +242,7 @@ string HttpRequest::url_decode(string_view str){
 bool HttpRequest::keep_alive() const
 {
     auto it = headers_.find("connection");
-    if (it != headers_.end())
-    {
+    if (it != headers_.end()){
         return it->second == "keep-alive" || (version_ == "HTTP/1.1" && it->second != "close");
     }
     return version_ == "HTTP/1.1";

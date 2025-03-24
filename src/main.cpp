@@ -5,7 +5,7 @@
 
 int main(){
     //                                    控制台     日志
-    Log::instance().init("Webserver.log", Log::DEBUG, Log::INFO);
+    Log::instance().init("Webserver.log", Log::INFO, Log::INFO);
     SqlConnPool &db_pool = SqlConnPool::instance();
 
     db_pool.init("127.0.0.1", "root", "123456", "mydb", 3306, 10);
