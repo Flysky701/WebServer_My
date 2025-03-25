@@ -24,11 +24,9 @@
 #include "authhandler.h"
 #include "userdao.h"
 #include "sqlconnpool.h"
-#include "staticfilehandle.h"
+#include "filehandle.h"
 #include "timer.h"
 #include "log.h"
-
-
 
 class Server
 {
@@ -75,11 +73,11 @@ private:
     EpollManager M_epoll_;
     ThreadPool pool_;
     Timer timer_;
-    SqlConnPool& sqlConnPool_;
+    SqlConnPool &sqlConnPool_;
     UserDao userDao_;
     AuthHandler authHandler_;
     static constexpr int CONN_TIMEOUT = 60000;
-    StaticFileHandler static_handler_{"public"};
+    FileHandler static_handler_{"public"};
     Router route_;
 
     std::unordered_map<int, std::shared_ptr<Connection>> Conns_;
@@ -87,19 +85,17 @@ private:
     std::mutex task_mtx;
     std::queue<std::function<void()>> pending_tasks;
 
-
     void InitSocket();
     void HandelConnection();
-    void HandleEvent(epoll_event& event);
+    void HandleEvent(epoll_event &event);
     void HandleTimeout(int fd);
     bool HandleRead(Connection *conn);
-    bool HandleWrite(Connection* conn);
+    bool HandleWrite(Connection *conn);
     void SubmitToThreadPool(std::shared_ptr<Connection> conn);
     void CloseConnection(std::shared_ptr<Connection> conn);
     void ProcessPendingTask();
     void Routes_Init();
 };
-
 
 void Server::Run()
 {
@@ -111,7 +107,8 @@ void Server::Run()
         int num_events = M_epoll_.WaitEvents(50);
         ProcessPendingTask();
 
-        for (int i = 0; i < num_events; i++){
+        for (int i = 0; i < num_events; i++)
+        {
             auto &events = M_epoll_.GetEvent()[i];
 
             if (events.data.fd == server_fd_)
@@ -123,7 +120,8 @@ void Server::Run()
         timer_.Tick();
     }
 }
-void Server::InitSocket(){
+void Server::InitSocket()
+{
 
     server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd_ < 0)
@@ -198,18 +196,21 @@ void Server::HandelConnection()
 void Server::HandleTimeout(int fd)
 {
     std::lock_guard<std::mutex> lock(task_mtx);
-    if (Conns_.count(fd)){
+    if (Conns_.count(fd))
+    {
         LOG_INFO("连接超时 fd： {}", fd);
         CloseConnection(Conns_[fd]);
     }
-    else{
+    else
+    {
         LOG_DEBUG("连接 {} 已关闭，忽略超时", fd);
     }
 }
 
 bool Server::HandleRead(Connection *conn)
 {
-    if (!conn->ReadData()){
+    if (!conn->ReadData())
+    {
         LOG_DEBUG("读取在Fd {} 上失败", conn->GetFd());
         return false;
     }
@@ -218,7 +219,8 @@ bool Server::HandleRead(Connection *conn)
 
 bool Server::HandleWrite(Connection *conn)
 {
-    if (!conn->Flush()){
+    if (!conn->Flush())
+    {
         LOG_DEBUG("写操作在Fd {} 上失败", conn->GetFd());
         return false;
     }
@@ -380,11 +382,11 @@ void Server::CloseConnection(std::shared_ptr<Connection> conn)
     }
 }
 
-void Server::Routes_Init(){
-    route_.add_route("/register", "POST", [this](const HttpRequest &req, HttpResponse &res){
-        authHandler_.handle_register(req, res);});
+void Server::Routes_Init()
+{
+    route_.add_route("/register", "POST", [this](const HttpRequest &req, HttpResponse &res)
+                     { authHandler_.handle_register(req, res); });
 
-    route_.add_route("/login", "POST", [this](const HttpRequest &req, HttpResponse &res){
-        authHandler_.handle_login(req, res); });
-    
+    route_.add_route("/login", "POST", [this](const HttpRequest &req, HttpResponse &res)
+                     { authHandler_.handle_login(req, res); });
 }
