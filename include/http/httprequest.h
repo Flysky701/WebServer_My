@@ -158,9 +158,9 @@ bool HttpRequest::parse(const char *data, size_t len)
         default:
             return false;
         }
-        LOG_DEBUG("state_为{}", state_);
+        // LOG_DEBUG("state_为{}", state_);
     }
-    LOG_DEBUG("state_为{}", state_);
+    // LOG_DEBUG("state_为{}", state_);
 
     return state_ == PARSE_COMPLETE;
 }

@@ -26,7 +26,8 @@ bool UserDao::create(const std::string &username, const std::string &password)
             "INSERT INTO users (username, password) VALUES (?, ?)");
         stmt -> setString(1, username);
         stmt -> setString(2, password);
-        LOG_DEBUG("尝试创建用户{}" , username);
+        // LOG_DEBUG("尝试创建用户{}" , username);
+        
         return stmt->executeUpdate() > 0;
     }
     catch (sql::SQLException &e){
@@ -45,7 +46,7 @@ bool UserDao::validata(const std::string &username, const std::string &password)
             "SELECT password FROM users WHERE username = ?");
         stmt->setString(1, username);
         auto res = stmt->executeQuery();
-        // LOG_DEBUG("验证用户中");
+        LOG_DEBUG("验证用户中");
         if(res -> next()){
             return res->getString("password") == password;
         }

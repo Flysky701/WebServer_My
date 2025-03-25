@@ -125,10 +125,9 @@ void SqlConnPool::FreeConn(std::shared_ptr<sql::Connection> conn)
             Conns_.push(MakeConn());
         }
     }
-    catch (const sql::SQLException &e)
-    {
-        LOG_ERROR("数据库FreeConn失败");
-        throw std::runtime_error("数据库FreeConn失败");
+    catch (const sql::SQLException &e){
+        LOG_ERROR("数据库释放连接失败");
+        throw std::runtime_error("数据库释放连接失败");
     }
     cv_.notify_one();
 }
