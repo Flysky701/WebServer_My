@@ -43,8 +43,6 @@ class HttpRequest
 
         const std::unordered_map<std::string, std::string> &query_params() const { return query_params_; };
         const std::unordered_map<std::string, std::string> &form_params() const { return form_params_; };
-        // 动态路由， 部分完成
-        // const std::unordered_map<std::string, std::string> &path_params() const { return path_params_; };
 
     private:
         // state
@@ -82,8 +80,6 @@ class HttpRequest
 
         std::unordered_map<std::string, std::string> query_params_;
         std::unordered_map<std::string, std::string> form_params_;
-        // 动态路由，部分完成
-        // std::unordered_map<std::string, std::string> path_params_;
 };
 
 using std::string;
@@ -135,7 +131,7 @@ bool HttpRequest::parse(const char *data, size_t len)
                 break;
     
             line = input.substr(pos, line_end - pos);
-            LOG_DEBUG("查看req——line:{}", line);
+            // LOG_DEBUG("查看req——line:{}", line);
             pos = line_end + 2;
         }
 
@@ -164,9 +160,9 @@ bool HttpRequest::parse(const char *data, size_t len)
         default:
             return false;
         }
-        LOG_DEBUG("state_为{}", state_);
+        // LOG_DEBUG("state_为{}", state_);
     }
-    LOG_DEBUG("state_为{}", state_);
+    // LOG_DEBUG("state_为{}", state_);
 
     return state_ == PARSE_COMPLETE;
 }
@@ -198,14 +194,14 @@ bool HttpRequest::parse_request_line(string_view line)
     size_t version_start = path_end + 1;
     version_ = line.substr(version_start);
     
-    LOG_DEBUG("[解析阶段] 原始请求路径: {}, {}, {}", method_, path_, version_);
+    // LOG_DEBUG("[解析阶段] 原始请求路径: {}, {}, {}", method_, path_, version_);
 
     return method_.size() && path_.size() && version_.size();
 }
 
 void HttpRequest::parse_headers(string_view line)
 {
-    LOG_DEBUG("parse_headers函数");
+    // LOG_DEBUG("parse_headers函数");
     size_t colon = line.find(':');
     if (colon == string_view::npos)
         return;
@@ -222,7 +218,7 @@ void HttpRequest::parse_headers(string_view line)
 }
 
 void HttpRequest::parse_body(string_view line){
-    LOG_DEBUG("parse_body函数");
+    // LOG_DEBUG("parse_body函数");
     if(headers_.count("content-type") && 
     headers_["content-type"].find("x-www-form-urlencoded") != string::npos){
         parse_key_value(line, form_params_);
