@@ -107,8 +107,7 @@ void Server::Run()
         int num_events = M_epoll_.WaitEvents(50);
         ProcessPendingTask();
 
-        for (int i = 0; i < num_events; i++)
-        {
+        for (int i = 0; i < num_events; i++){
             auto &events = M_epoll_.GetEvent()[i];
 
             if (events.data.fd == server_fd_)
@@ -124,8 +123,7 @@ void Server::InitSocket()
 {
 
     server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd_ < 0)
-    {
+    if (server_fd_ < 0){
         LOG_ERROR("Socket创建失败");
         throw std::system_error(errno, std::system_category());
     }
@@ -133,13 +131,13 @@ void Server::InitSocket()
     int flags = fcntl(server_fd_, F_GETFL, 0);
     if (flags == -1)
     {
-        LOG_ERROR("fcntl F_GETFL 失败");
+        LOG_ERROR("获取Socket标志失败");
         throw std::system_error(errno, std::system_category());
     }
     if (fcntl(server_fd_, F_SETFL, flags | O_NONBLOCK) == -1)
     {
 
-        LOG_ERROR("fcntl F_SETFL 非阻塞失败");
+        LOG_ERROR("设置Socket非阻塞模式失败");
         throw std::system_error(errno, std::system_category());
     }
     // SO_REUSEADDR允许端口重用，防止TIME_WAIT状态导致绑定失败
@@ -153,7 +151,7 @@ void Server::InitSocket()
 
     if (bind(server_fd_, (sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
-        LOG_ERROR("绑定失败");
+        LOG_ERROR("地址绑定失败");
         throw std::system_error(errno, std::system_category());
     }
     //

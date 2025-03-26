@@ -105,6 +105,7 @@ string HttpRequest::get_file_extension(const string &path)
         file_extension = path.substr(dot_pos + 1);
     return file_extension;
 }
+
 string HttpRequest::get_mime_type(const string &path)
 {
     string extension = get_file_extension(path);

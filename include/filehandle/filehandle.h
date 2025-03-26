@@ -2,15 +2,24 @@
 
 #include <string>
 #include <fstream>
-#include "router.h"
+
 #include "httprequest.h"
 #include "httpresponse.h"
 
+#include "downloader.h"
+#include "uploader.h"
+
 class FileHandler
 {
-public:
-    explicit FileHandler(const std::string &base_dir)
-        : base_dir_(base_dir) {}
+    public:
+        explicit FileHandler(const std::string &base_dir,
+            std::unique_ptr<DownLoader> downloader, 
+            std::unique_ptr<UpLoader> uploader)
+            : base_dir_(base_dir),
+            uploader_(std::move(downloader)),
+            downloader_(std::move(uploader))
+            {};
+
 
     bool handle_request(const HttpRequest &req, HttpResponse &res)
     {
@@ -40,20 +49,16 @@ public:
 
 private:
     std::string base_dir_;
+    Connection &conn;
+    std::unique_ptr<DownLoader> downloader_;
+    std::unique_ptr<UpLoader> uploader_;
 
     // 路径解析相关方法
-    std::string resolve_path(const std::string &path){
-        return path == "/" ? "/Main.html" : path;
-    }
-    bool is_safe_path(const std::string &path){
-        return path.find("..") == std::string::npos;
-    }
+    std::string resolve_path(const std::string &path){ return path == "/" ? "/Main.html" : path; }
+    bool is_safe_path(const std::string &path){ return path.find("..") == std::string::npos; }
 
     // 文件操作相关方法
-    bool file_exists(const std::string &path){
-        std::ifstream f(path);
-        return f.good();
-    }
+    bool file_exists(const std::string &path){ std::ifstream f(path); return f.good(); }
 
     std::string read_file(const std::string &path)
     {
