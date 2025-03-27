@@ -11,8 +11,8 @@ using  std::unordered_map;
 using std::string;
 using std::vector;
 
-class Router
-{
+class Router{
+    
     public:
         using Handler = std::function<void(const HttpRequest &, HttpResponse &)>;
         void add_route(const std::string &path, const std::string &method,Handler handler){

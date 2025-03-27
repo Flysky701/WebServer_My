@@ -73,12 +73,13 @@ private:
     EpollManager M_epoll_;
     ThreadPool pool_;
     Timer timer_;
+    static constexpr int CONN_TIMEOUT = 60000;
     SqlConnPool &sqlConnPool_;
     UserDao userDao_;
     AuthHandler authHandler_;
-    static constexpr int CONN_TIMEOUT = 60000;
-    FileHandler static_handler_{"public"};
     Router route_;
+    
+    // FileHandler static_handler_{"public"};
 
     std::unordered_map<int, std::shared_ptr<Connection>> Conns_;
     std::mutex epoll_mtx;

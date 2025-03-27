@@ -24,8 +24,8 @@ class HttpRequest
         const std::string &method() const { return method_; }
         const std::string &path() const { return path_; }
         const std::string &version() const { return version_; }
+        const std::string &body() const { return body_; };
         const ParseState &state() const { return state_; }
-
 
         struct FileInfo{
             std::string mime_type;
@@ -50,6 +50,7 @@ class HttpRequest
         std::string method_;
         std::string path_;
         std::string version_;
+        std::string body_;
 
         std::unordered_map<std::string, std::string> headers_;
         static const std::unordered_map<std::string, std::string> MIME_TYPES;
@@ -153,8 +154,19 @@ bool HttpRequest::parse(const char *data, size_t len)
                 parse_headers(line);
             break;
         case PARSE_BODY:
-            parse_body(line);
-            state_ = PARSE_COMPLETE;
+            size_t content_length = 0;
+            content_length = std::stoul(headers_.at("content-length"));
+
+            // 累积 body 数据
+            size_t needed = content_length - body_.size();
+            size_t take = std::min(needed, input.size() - pos);
+            body_.append(input.substr(pos, take));
+            pos += take;
+
+            if (body_.size() >= content_length){
+                parse_body(body_);
+                state_ = PARSE_COMPLETE;
+            }
             break;
         default:
             return false;
@@ -216,8 +228,9 @@ void HttpRequest::parse_headers(string_view line)
 
 void HttpRequest::parse_body(string_view line){
     // LOG_DEBUG("parse_body函数");
-    if(headers_.count("content-type") && 
-    headers_["content-type"].find("x-www-form-urlencoded") != string::npos){
+    body_ = line;
+    if (headers_.count("content-type") &&
+        headers_["content-type"].find("x-www-form-urlencoded") != string::npos){
         parse_key_value(line, form_params_);
     }
 }
