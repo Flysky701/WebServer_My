@@ -4,20 +4,22 @@
 #include "httpresponse.h"
 
 #include "userdao.h"
+#include "tokenmanager.h"
 #include "log.h"
 
 class AuthHandler{
     public:
-        explicit AuthHandler(UserDao& dao) : dao_(dao) {};
+        explicit AuthHandler(UserDao& dao, TokenManager& tokenmanager) : dao_(dao), tokenManager_(tokenmanager) {};
         
         void handle_login(const HttpRequest &req, HttpResponse &res);
         void handle_register(const HttpRequest &req, HttpResponse &res);
 
     private:
         UserDao &dao_;
+        TokenManager &tokenManager_;
 
         void build_success_response(HttpResponse &res, const std::string &msg){
-            res.set_status(200)
+            res.set_status(201)
                .set_content(R"({"status":"success", "message":")" + msg + "\"}", "application/json")
                .set_header("Access-Control-Allow-Origin", "*");
         }
@@ -49,8 +51,10 @@ void AuthHandler::handle_login(const HttpRequest &req, HttpResponse &res){
 
     try{
         if(dao_.validata(username, password)){
+            // 需要修改
             build_success_response(res, "Login successful");
         }else {
+            // 需要修改
             build_error_response(res, 401, "Invalid credentials");
         }
 
@@ -61,7 +65,6 @@ void AuthHandler::handle_login(const HttpRequest &req, HttpResponse &res){
 }
 
 void AuthHandler::handle_register(const HttpRequest &req, HttpResponse &res){
-    // LOG_DEBUG("进入函数{}", "handle_register");
     if(req.method() != "POST"){
         build_error_response(res, 405, "Method Not Allowed");
         return;
@@ -69,11 +72,11 @@ void AuthHandler::handle_register(const HttpRequest &req, HttpResponse &res){
     const auto& form_params = req.form_params();
     auto username_it = form_params.find("username");
     auto password_it = form_params.find("password");
+
     if (username_it == form_params.end() || password_it == form_params.end()) {
         build_error_response(res, 400, "Missing username or password");
         return;
     }
-
     std::string username = username_it->second;
     std::string password = password_it->second;
 

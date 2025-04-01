@@ -26,7 +26,11 @@ class FileHandler
         std::string resolve_path(const std::string &path) { 
             return path == "/" ? "/Main.html" : path; 
         }
-        bool is_safe_path(const std::string &path) { return path.find("..") == std::string::npos; }
+
+        bool is_safe_path(const std::string &path) { 
+            return path.find("..") == std::string::npos; 
+        }
+
         bool ensure_directory_exists(const std::string &path){
             try{
                 auto parent_dir = std::filesystem::path(path).parent_path();
@@ -64,8 +68,7 @@ bool FileHandler::handle_request(const HttpRequest &req, HttpResponse &res, Conn
     std::string full_path = base_dir_ + path;
     LOG_DEBUG("尝试访问文件路径: " + full_path);
 
-    if (!ensure_directory_exists(full_path))
-    {
+    if (!ensure_directory_exists(full_path)){
         res.set_status(500);
         return true;
     }

@@ -42,7 +42,7 @@ class TokenManager{
         }
 };
 
-bool TokenManager::Validate(const HttpRequest &req, std::string *out_user = nullptr){
+bool TokenManager::Validate(const HttpRequest &req, std::string *out_user){
     std::string token = req.get_token();
     if(token.empty())
         return false;

@@ -25,9 +25,12 @@
 #include "userdao.h"
 #include "router.h"
 #include "sqlconnpool.h"
-#include "filehandle.h"
 #include "timer.h"
 #include "log.h"
+
+// 需要测试的类
+#include "filehandle.h"
+#include "tokenmanager.h"
 
 class Server
 {
@@ -38,7 +41,7 @@ public:
           pool_(32),
           sqlConnPool_(SqlConnPool::instance()),
           userDao_(SqlConnPool::instance()),
-          authHandler_(userDao_),
+          authHandler_(userDao_, tokenManager_),
           timer_([this](int fd)
                  { HandleTimeout(fd); })
     {
@@ -79,8 +82,10 @@ private:
     UserDao userDao_;
     AuthHandler authHandler_;
     Router route_;
-    
-    // FileHandler static_handler_{"public"};
+    TokenManager tokenManager_;
+
+    // for test
+    FileHandler static_handler_{"public"};
 
     std::unordered_map<int, std::shared_ptr<Connection>> Conns_;
     std::mutex epoll_mtx;

@@ -162,7 +162,7 @@ bool HttpRequest::parse(const char *data, size_t len)
             }else 
                 parse_headers(line);
             break;
-        case PARSE_BODY:
+        case PARSE_BODY:{
             size_t content_length = 0;
             content_length = std::stoul(headers_.at("content-length"));
 
@@ -177,6 +177,7 @@ bool HttpRequest::parse(const char *data, size_t len)
                 state_ = PARSE_COMPLETE;
             }
             break;
+        }
         default:
             return false;
         }
