@@ -24,7 +24,7 @@ class HttpRequest
         const std::string &method() const { return method_; }
         const std::string &path() const { return path_; }
         const std::string &version() const { return version_; }
-        const std::string &body() const { return body_; };
+        const std::string &body() const { return body_; }
         const ParseState &state() const { return state_; }
 
         struct FileInfo{
@@ -32,6 +32,7 @@ class HttpRequest
             std::string file_extension;
         };
 
+        std::string get_token() const;
         static std::string get_file_extension(const std::string &path);
         static std::string get_mime_type(const std::string &path);
         
@@ -114,6 +115,14 @@ string HttpRequest::get_mime_type(const string &path)
     if (it != MIME_TYPES.end())
         return it->second;
     return "application/octet-stream";
+}
+
+string HttpRequest::get_token() const {
+    auto it = headers_.find("Cookie"); 
+    if (it != headers_.end()){
+        return it->second.substr(7);
+    }
+    return "";
 }
 
 bool HttpRequest::parse(const char *data, size_t len)
