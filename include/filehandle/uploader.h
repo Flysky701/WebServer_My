@@ -61,6 +61,8 @@ class UpLoader{
                     LOG_ERROR("");
                     return false;
                 }
+                total += written;
+                remaining -= written;
             }
             return false;
         }

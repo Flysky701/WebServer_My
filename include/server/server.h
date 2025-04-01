@@ -23,6 +23,7 @@
 #include "httpresponse.h"
 #include "authhandler.h"
 #include "userdao.h"
+#include "router.h"
 #include "sqlconnpool.h"
 #include "filehandle.h"
 #include "timer.h"
@@ -84,6 +85,7 @@ private:
     std::unordered_map<int, std::shared_ptr<Connection>> Conns_;
     std::mutex epoll_mtx;
     std::mutex task_mtx;
+    std::mutex token_mtx;
     std::queue<std::function<void()>> pending_tasks;
 
     void InitSocket();

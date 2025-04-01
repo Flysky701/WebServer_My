@@ -9,7 +9,7 @@
 class AuthHandler{
     public:
         explicit AuthHandler(UserDao& dao) : dao_(dao) {};
-
+        
         void handle_login(const HttpRequest &req, HttpResponse &res);
         void handle_register(const HttpRequest &req, HttpResponse &res);
 

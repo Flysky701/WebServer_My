@@ -1,5 +1,4 @@
-#ifndef TIMER_H
-#define TIMER_H
+#pragma once
 
 #include <mutex>
 #include <vector>
@@ -136,4 +135,3 @@ void Timer::Heap_pop() {
         Heap_down(0);
     }
 }
-#endif
