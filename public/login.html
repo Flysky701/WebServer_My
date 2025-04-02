@@ -79,13 +79,35 @@
         .nav-link a:hover {
             text-decoration: underline;
         }
+
+        .alert {
+            display: none;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 6px;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
     </style>
 </head>
-
 <body>
     <div class="login-container">
         <h2 class="form-title">用户登录</h2>
-        <form action="/login" method="POST">
+        <!-- 提示信息区域 -->
+        <div id="error-msg" class="alert error" style="display: none;"></div>
+        <div id="success-msg" class="alert success" style="display: none;"></div>
+
+        <form id="login-form">
             <div class="form-group">
                 <input type="text" name="username" placeholder="用户名" required>
             </div>
@@ -98,6 +120,60 @@
             没有账号？<a href="/register.html">立即注册</a>
         </div>
     </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const form = e.target;
+            const errorDiv = document.getElementById('error-msg');
+            const successDiv = document.getElementById('success-msg');
+            const submitBtn = form.querySelector('button[type="submit"]');
+
+            // 获取输入值
+            const username = form.querySelector('[name="username"]').value;
+            const password = form.querySelector('[name="password"]').value;
+
+            // 清空旧提示
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = '登录中...';
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                });
+
+                // 处理非200响应
+                if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(result.message || '登录失败');
+                }
+
+                // 登录成功处理
+                successDiv.textContent = "✅ 登录成功，正在跳转...";
+                successDiv.style.display = 'block';
+
+                setTimeout(() => {
+                    window.location.href = "/dashboard.html";
+                }, 1500);
+
+            } catch (error) {
+                // 错误处理
+                errorDiv.textContent = `❌ ${error.message}`;
+                errorDiv.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '登录';
+            }
+        });
+    </script>
 </body>
 
+</html>
 </html>

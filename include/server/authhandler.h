@@ -51,7 +51,10 @@ void AuthHandler::handle_login(const HttpRequest &req, HttpResponse &res){
 
     try{
         if(dao_.validata(username, password)){
-            // 需要修改
+
+            string token = tokenManager_.Generate(username);
+            //
+            res.set_header("Authorization", "Bearer" + token);
             build_success_response(res, "Login successful");
         }else {
             // 需要修改

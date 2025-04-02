@@ -307,13 +307,17 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
             LOG_DEBUG("{}, {}, {}", req.method(), req.path(), req.version());
             try
             {
-                request_handled = route_.HandleRequest(req, res);
-
-                if (req.method() == "GET" || req.method() == "HEAD")
-                    request_handled = static_handler_.handle_request(req, res);
-
-                if (!request_handled)
-                {
+                bool check = true;
+                if (route_.IsVaildate(req))
+                    check = tokenManager_.Validate(req);
+                
+                if(check){
+                    request_handled = route_.HandleRequest(req, res);
+                    // 下面需要整合 到route里面
+                    if (req.method() == "GET" || req.method() == "HEAD")
+                        request_handled = static_handler_.handle_request(req, res);
+                }
+                if (!request_handled){
                     res.set_status(404)
                         .set_content("<h1>404 Not Found</h1>", "text/html");
                 }
@@ -390,6 +394,10 @@ void Server::CloseConnection(std::shared_ptr<Connection> conn)
 
 void Server::Routes_Init()
 {
+    route_.add_token_Validate("/upload", "POST");
+    route_.add_token_Validate("/download", "POST");
+    route_.add_token_Validate("/dashboard.html", "GET");
+
     route_.add_route("/register", "POST", [this](const HttpRequest &req, HttpResponse &res)
                      { authHandler_.handle_register(req, res); });
 

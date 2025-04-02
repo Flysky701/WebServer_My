@@ -55,7 +55,6 @@ bool TokenManager::Validate(const HttpRequest &req, std::string *out_user){
             tokens_.erase(it);
             return false;
         }
-
         if(out_user)
             *out_user = it->second.username;
     }

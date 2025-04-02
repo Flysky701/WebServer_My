@@ -118,9 +118,29 @@ string HttpRequest::get_mime_type(const string &path)
 }
 
 string HttpRequest::get_token() const {
-    auto it = headers_.find("Cookie"); 
-    if (it != headers_.end()){
-        return it->second.substr(7);
+    // Auth头
+    auto auth_it = headers_.find("Authorization");
+    if(auth_it != headers_.end()){
+        std::string auth_headers = auth_it->second;
+        if(auth_headers.find("Bearer ") == 0){
+            return auth_headers.substr(7);
+        }
+    }
+
+    // cookie
+    auto cookie_it = headers_.find("Cookie");
+    if (cookie_it != headers_.end())
+    {
+        std::string cookies = cookie_it->second;
+        size_t token_start = cookies.find("token=");
+        if (token_start != std::string::npos)
+        {
+            token_start += 6;
+            size_t token_end = cookies.find(';', token_start);
+            if (token_end == std::string::npos)
+                token_end = cookies.length();
+            return cookies.substr(token_start, token_end - token_start);
+        }
     }
     return "";
 }

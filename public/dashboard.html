@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仪表盘</title>
+    <style>
+        /* 复用原有样式 */
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            /* 调大容器宽度 */
+            margin: 2rem auto;
+        }
+
+        .submit-btn {
+            width: auto;
+            /* 按钮自适应宽度 */
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 1rem 0;
+        }
+
+        /* 新增图片预览样式 */
+        .image-preview {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            max-width: 90%;
+            max-height: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+
+        /* 关闭按钮 */
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <h2 class="form-title">仪表盘</h2>
+
+        <!-- 图片查看按钮 -->
+        <button class="submit-btn" id="show-image-btn">查看示例图片</button>
+
+        <!-- 图片预览层 -->
+        <div class="overlay" id="image-overlay"></div>
+        <img src="/images/example2.jpg" alt="示例图片" class="image-preview" id="preview-image">
+        <button class="close-btn" id="close-btn">×</button>
+    </div>
+
+    <script>
+        // 获取元素
+        const showBtn = document.getElementById('show-image-btn');
+        const overlay = document.getElementById('image-overlay');
+        const previewImage = document.getElementById('preview-image');
+        const closeBtn = document.getElementById('close-btn');
+
+        // 显示图片
+        showBtn.addEventListener('click', () => {
+            previewImage.style.display = 'block';
+            overlay.style.display = 'block';
+        });
+
+        // 关闭预览
+        function closePreview() {
+            previewImage.style.display = 'none';
+            overlay.style.display = 'none';
+        }
+
+        // 绑定关闭事件
+        closeBtn.addEventListener('click', closePreview);
+        overlay.addEventListener('click', closePreview);
+
+        // ESC键关闭
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePreview();
+        });
+    </script>
+</body>
+
+</html>

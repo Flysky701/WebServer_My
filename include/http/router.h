@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <set>
 #include <string>
 #include <vector>
 #include <functional>
@@ -15,11 +16,20 @@ class Router{
     
     public:
         using Handler = std::function<void(const HttpRequest &, HttpResponse &)>;
+
         void add_route(const std::string &path, const std::string &method,Handler handler){
             routes_[path][method] = handler;
         }
+        void add_token_Validate(const std::string &path, const std::string &method){
+            tokenValidate_.emplace(std::make_pair(path, method));
+        }
+        bool IsVaildate(const HttpRequest &req){
+            auto key = make_pair(req.path(), req.method());
+            return tokenValidate_.count(key) > 0;
+        }
 
-        bool HandleRequest(const HttpRequest& req, HttpResponse& res){
+        bool HandleRequest(const HttpRequest &req, HttpResponse &res){\
+
             auto path_it = routes_.find(req.path());
             if(path_it == routes_.end())
                 return false;
@@ -30,9 +40,10 @@ class Router{
             method_it->second(req, res);
             return true;
         }
+
     private:
         std::unordered_map<
             std::string, std::unordered_map<
-                std::string, std::function<void(const HttpRequest &, HttpResponse &)>>> routes_;
-            
+                std::string, Handler >> routes_;
+        std::set<std::pair<std::string, std::string>> tokenValidate_;
 };
