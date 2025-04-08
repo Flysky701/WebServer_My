@@ -154,9 +154,9 @@
     <div class="dashboard-container">
         <!-- 用户信息 -->
         <div class="user-header">
-            <div class="username">当前用户：admin</div>
+            <div class="username">正在加载用户信息...</div>
             <div class="storage-meter">
-                <div>已用空间：13.2 GB / 20 GB</div>
+                <div>已用空间：<span class="storage-used">0 B</span> / <span class="storage-total">0 B</span></div>
                 <div class="progress-bar">
                     <div class="progress"></div>
                 </div>
@@ -174,23 +174,10 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- 
-                    <tr>
-                        <td>项目文档.pdf</td>
-                        <td>2.4 MB</td>
-                        <td>2024-03-15 14:30</td>
+                    <!-- 动态加载文件列表 -->
+                    <tr class="loading-row">
+                        <td colspan="3" style="text-align: center">正在加载文件列表...</td>
                     </tr>
-                    <tr>
-                        <td>设计稿.sketch</td>
-                        <td>15.8 MB</td>
-                        <td>2024-03-14 09:45</td>
-                    </tr>
-                    <tr>
-                        <td>季度报告.docx</td>
-                        <td>876 KB</td>
-                        <td>2024-03-13 16:20</td>
-                    </tr>
-                    -->
                 </tbody>
             </table>
         </main>
@@ -227,12 +214,231 @@
     </div>
 
     <script>
-        // 文件选择逻辑
-        document.querySelectorAll('.file-table tr').forEach(row => {
-            row.addEventListener('click', () => {
-                row.classList.toggle('selected');
-            });
+        // 全局配置
+        const API_BASE = 'http://localhost:8080/api';
+        let currentUser = null;
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // 1. 获取用户信息
+                await loadUserInfo();
+
+                // 2. 加载文件列表
+                await loadFiles();
+            } catch (err) {
+                showError('初始化失败，请刷新页面');
+            }
         });
+
+        // 获取用户信息
+        async function loadUserInfo() {
+            try {
+                const res = await fetch(`${API_BASE}/user`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!res.ok) throw new Error(res.statusText);
+
+                const data = await res.json();
+                currentUser = data;
+
+                // 更新用户界面
+                document.querySelector('.username').textContent = `当前用户：${data.username}`;
+                document.querySelector('.storage-used').textContent = formatSize(data.storage_used);
+                document.querySelector('.storage-total').textContent = formatSize(data.storage_total);
+                document.querySelector('.progress').style.width =
+                    `${(data.storage_used / data.storage_total * 100).toFixed(1)}%`;
+            } catch (err) {
+                console.error('用户信息加载失败:', err);
+                throw err;
+            }
+        }
+
+        // 加载文件列表
+        async function loadFiles() {
+            const tbody = document.querySelector('.file-table tbody');
+            try {
+                tbody.innerHTML = `<tr class="loading-row">
+                    <td colspan="3" style="text-align: center">正在加载文件列表...</td>
+                </tr>`;
+
+                const res = await fetch(`${API_BASE}/files`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!res.ok) throw new Error(res.statusText);
+
+                const files = await res.json();
+
+                if (files.length === 0) {
+                    tbody.innerHTML = `<tr class="empty-row">
+                        <td colspan="3" style="text-align: center">暂无文件，请上传文件</td>
+                    </tr>`;
+                    return;
+                }
+
+                // 生成文件列表
+                tbody.innerHTML = files.map(file => `
+                    <tr data-id="${file.id}">
+                        <td>${file.name}</td>
+                        <td>${formatSize(file.size)}</td>
+                        <td>${new Date(file.created_at).toLocaleString()}</td>
+                    </tr>
+                `).join('');
+
+                // 绑定点击事件
+                document.querySelectorAll('.file-table tr[data-id]').forEach(row => {
+                    row.addEventListener('click', function () {
+                        this.classList.toggle('selected');
+                    });
+                });
+            } catch (err) {
+                console.error('文件加载失败:', err);
+                tbody.innerHTML = `<tr class="error-row">
+                    <td colspan="3" style="text-align: center; color: red">文件加载失败，请重试</td>
+                </tr>`;
+            }
+        }
+
+        // 文件上传处理
+        async function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const uploadBtn = document.getElementById('upload-btn');
+            try {
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = `上传中...`;
+
+                const formData = new FormData();
+                Array.from(files).forEach(file => {
+                    formData.append('files', file);
+                });
+
+                const res = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.message || '上传失败');
+                }
+
+                alert('上传成功');
+                await loadFiles();
+            } catch (err) {
+                console.error('上传失败:', err);
+                alert(`上传失败: ${err.message}`);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = `<svg...>上传文件</svg>`;
+            }
+        }
+
+        // 下载选中文件
+        document.getElementById('download-btn').addEventListener('click', async () => {
+            const selectedIds = getSelectedIds();
+            if (selectedIds.length === 0) return alert('请选择要下载的文件');
+
+            const downloadBtn = document.getElementById('download-btn');
+            try {
+                downloadBtn.disabled = true;
+                downloadBtn.textContent = '准备下载...';
+
+                const res = await fetch(`${API_BASE}/download`, {
+                    method: 'POST',
+                    headers: {
+                        ...getAuthHeader(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ files: selectedIds })
+                });
+
+                if (!res.ok) throw new Error(res.statusText);
+
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `files-${Date.now()}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('下载失败:', err);
+                alert('下载失败，请重试');
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = '下载选中';
+            }
+        });
+
+        // 删除文件
+        document.getElementById('delete-btn').addEventListener('click', async () => {
+            const selectedIds = getSelectedIds();
+            if (selectedIds.length === 0) return alert('请选择要删除的文件');
+            if (!confirm(`确定要删除选中的 ${selectedIds.length} 个文件吗？`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/files`, {
+                    method: 'DELETE',
+                    headers: {
+                        ...getAuthHeader(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ files: selectedIds })
+                });
+
+                if (!res.ok) throw new Error(res.statusText);
+
+                alert('删除成功');
+                await loadFiles();
+            } catch (err) {
+                console.error('删除失败:', err);
+                alert('删除失败，请重试');
+            }
+        });
+
+        // 辅助函数
+        function getAuthHeader() {
+            return {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            };
+        }
+
+        function getSelectedIds() {
+            return Array.from(document.querySelectorAll('.selected'))
+                .map(tr => parseInt(tr.dataset.id));
+        }
+
+        function formatSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            for (const unit of units) {
+                if (size < 1024) return `${size.toFixed(1)} ${unit}`;
+                size /= 1024;
+            }
+            return `${size.toFixed(1)} TB`;
+        }
+
+        function showError(msg) {
+            const div = document.createElement('div');
+            div.style.position = 'fixed';
+            div.style.top = '20px';
+            div.style.right = '20px';
+            div.style.padding = '15px';
+            div.style.background = '#e74c3c';
+            div.style.color = 'white';
+            div.style.borderRadius = '8px';
+            div.textContent = msg;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        // 拖放上传处理（保持不变）
 
         // 拖放上传逻辑
         const dropZone = document.getElementById('drop-zone');
@@ -261,23 +467,6 @@
         fileInput.addEventListener('change', (e) => {
             handleFiles(e.target.files);
         });
-
-        function handleFiles(files) {
-            // 这里添加文件上传逻辑
-            console.log('待上传文件:', files);
-        }
-
-        // 操作按钮事件绑定
-        document.getElementById('download-btn').addEventListener('click', () => {
-            const selected = document.querySelectorAll('.selected');
-            // 添加下载逻辑
-        });
-
-        document.getElementById('delete-btn').addEventListener('click', () => {
-            const selected = document.querySelectorAll('.selected');
-            // 添加删除逻辑
-        });
     </script>
 </body>
-
 </html>

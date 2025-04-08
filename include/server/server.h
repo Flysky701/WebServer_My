@@ -398,10 +398,8 @@ void Server::CloseConnection(std::shared_ptr<Connection> conn)
 
 void Server::Routes_Init()
 {
-    route_.add_token_Validate("/upload", "POST");
-    route_.add_token_Validate("/download", "POST");
-    route_.add_token_Validate("/dashboard.html", "GET");
-    route_.add_token_Validate("/dashboard", "GET");
+    route_.add_token_Validate("/dashboard1.html", "GET");
+    // route_.add_token_Validate("/api")
 
 
     route_.add_route("/register", "POST", [this](const HttpRequest &req, HttpResponse &res)

@@ -47,7 +47,6 @@ bool FileDao::CreatFile(const FileMeta &meta){
         return false;
     }
 }
-
 bool FileDao::DeleteFile(int file_id, int user_id){
     SqlGuard conn(pool_);
 

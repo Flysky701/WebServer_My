@@ -1,0 +1,100 @@
+GET /api/users/{userId}
+Headers:
+Authorization: Bearer <jwt_token>
+
+{
+  "code": 200,
+  "data": {
+    "username": "admin",
+    "storage": {
+      "used": 13658982400,  // 单位：字节
+      "total": 21474836480,
+      "human_readable": {
+        "used": "13.66 GB",
+        "total": "20.00 GB"
+      }
+    },
+    "last_login": "2024-03-15T08:30:45Z"
+  }
+}
+-------------------------------------
+GET /api/files?page=1&limit=20
+Headers:
+Authorization: Bearer <jwt_token>
+
+{
+  "code": 200,
+  "data": {
+    "total": 85,
+    "page": 1,
+    "files": [
+      {
+        "id": "f3a8b7c2-01d4-4e2a-a5b6",
+        "name": "项目文档.pdf",
+        "size": 2516582,
+        "type": "application/pdf",
+        "modified": "2024-03-15T14:30:00Z",
+        "permissions": {
+          "read": true,
+          "write": true,
+          "share": false
+        },
+        "download_url": "/api/files/f3a8b7c2-01d4-4e2a-a5b6/download"
+      },
+      {
+        "id": "e6c5d4a3-b2f1-4e8d",
+        "name": "设计稿.sketch",
+        "size": 16582246,
+        "type": "image/sketch",
+        "modified": "2024-03-14T09:45:00Z",
+        "permissions": {
+          "read": true,
+          "write": false,
+          "share": true
+        },
+        "download_url": "/api/files/e6c5d4a3-b2f1-4e8d/download"
+      }
+    ]
+  }
+}
+
+--------------------------------------------------------------
+POST /api/files/upload
+Headers:
+Content-Type: multipart/form-data
+Authorization: Bearer <jwt_token>
+
+Body:
+file: <binary_file>
+
+//json
+{
+  "code": 201,
+  "data": {
+    "file_id": "f3a8b7c2-01d4-4e2a-a5b6",
+    "name": "新文件.pdf",
+    "size": 2516582,
+    "message": "文件上传成功"
+  }
+}
+
+---------------------------------------------------
+POST /api/files/batch-download
+Headers:
+Authorization: Bearer <jwt_token>
+Content-Type: application/json
+
+Body:
+{
+  "file_ids": ["f3a8b7c2-01d4-4e2a-a5b6", "e6c5d4a3-b2f1-4e8d"]
+}
+// json
+{
+  "code": 200,
+  "data": {
+    "archive_url": "/api/downloads/abc123.zip",
+    "expires": "2024-03-15T18:00:00Z"
+  }
+}
+
+---------------------------------------------

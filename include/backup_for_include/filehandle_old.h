@@ -25,7 +25,7 @@ public:
             return true;
         }
         std::string full_path = base_dir_ + path;
-        LOG_DEBUG("尝试访问文件路径: " + full_path);
+        // LOG_DEBUG("尝试访问文件路径: " + full_path);
 
         if (!file_exists(full_path))
         {
