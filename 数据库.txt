@@ -4,9 +4,35 @@ mysql -u root -p
 
 CREATE DATABASE IF NOT EXISTS mydb;
 
+-- 创建数据库（保留字符集设置确保中文兼容）
+CHARACTER SET utf8mb4 
+COLLATE utf8mb4_unicode_ci;
+
 USE mydb;
+
+-- 用户表
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(50) NOT NULL
-);
+    password VARCHAR(50) NOT NULL COMMENT '测试阶段使用明文',
+    total_quota BIGINT UNSIGNED DEFAULT 10737418240 COMMENT '默认10GB空间',
+    used_quota BIGINT UNSIGNED DEFAULT 0
+) ENGINE=InnoDB;
+
+-- 文件表
+CREATE TABLE files (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    file_size BIGINT UNSIGNED NOT NULL,
+    file_path VARCHAR(512) NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    -- 外键约束
+    FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+-- 文件索引
+INDEX idx_user (user_id),
+INDEX idx_deleted (is_deleted),

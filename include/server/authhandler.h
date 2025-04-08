@@ -61,7 +61,7 @@ void AuthHandler::handle_login(const HttpRequest &req, HttpResponse &res)
             string token = tokenManager_.Generate(username);
             LOG_DEBUG("加入token {}", token);
             //
-            res.set_header("Authorization", "Bearer" + token);
+            res.set_header("Authorization", "Bearer " + token);
             res.set_header("Set-Cookie", "token=" + token + "; Path=/; SameSite=Strict; HttpOnly");
 
             build_success_response(res, "Login successful");

@@ -20,6 +20,8 @@ class FileHandler
         bool static_handle(const HttpRequest &req, HttpResponse &res);
         bool handle_download(const HttpRequest &req, HttpResponse &res, int fd);
         bool handle_upload(const HttpRequest &req, HttpResponse &res);
+        bool handle_userinfo(const HttpRequest &req, HttpResponse &res);
+        // bool handle_
 
     private:
         std::string base_dir_;
@@ -143,4 +145,8 @@ bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
 
     res.set_status(201);
     return true;
+}
+
+bool FileHandler::handle_userinfo(const HttpRequest &req, HttpResponse &res){
+    if(req.method != )
 }

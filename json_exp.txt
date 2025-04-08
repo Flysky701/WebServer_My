@@ -12,7 +12,7 @@ Authorization: Bearer <jwt_token>
       "human_readable": {
         "used": "13.66 GB",
         "total": "20.00 GB"
-      }
+      }json_exp.txt
     },
     "last_login": "2024-03-15T08:30:45Z"
   }
