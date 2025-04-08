@@ -73,8 +73,10 @@ bool Connection::ReadData(){
             tot_read += r_bytes;
             r_buffer.insert(r_buffer.end(), buffer.data(), buffer.data() + r_bytes);
         }
-        else if (r_bytes == 0)
+        else if (r_bytes == 0){
+            LOG_DEBUG("没有读取到字节");
             return false; // 连接关闭
+        }
         else{
             if (errno == EAGAIN || errno == EWOULDBLOCK)break;
             LOG_ERROR("读取错误");

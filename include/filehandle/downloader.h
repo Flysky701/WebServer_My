@@ -13,7 +13,7 @@
 
 class DownLoader{
     public:
-        static bool HandleDownload(const std::string &path, HttpResponse &res, Connection &conn){
+        static bool HandleDownload(const std::string &path, HttpResponse &res, int sent_fd){
             FileRall file_fd(open(path.c_str(), O_RDONLY));
             if(file_fd.GetFd() < 0){
                 LOG_ERROR("打开文件失败: {} - {}", path, strerror(errno));
@@ -29,8 +29,9 @@ class DownLoader{
             res.set_header("Content-Length", std::to_string(file_stat.st_size))
                 .set_header("Content-Type", "application/octet-stream")
                 .set_keep_alive(true);
+            LOG_DEBUG("传输数据(Downloader)");
 
-            return SendFile(conn.GetFd(), file_fd.GetFd(), file_stat.st_size);
+            return SendFile(sent_fd, file_fd.GetFd(), file_stat.st_size);
         }
     private:
         class FileRall{

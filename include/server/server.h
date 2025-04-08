@@ -27,10 +27,10 @@
 #include "sqlconnpool.h"
 #include "timer.h"
 #include "log.h"
+#include "tokenmanager.h"
 
 // 需要测试的类
-#include "filehandle.h"
-#include "tokenmanager.h"
+#include "filehandle_new.h"
 
 class Server
 {
@@ -85,7 +85,7 @@ private:
     TokenManager tokenManager_;
 
     // for test
-    FileHandler static_handler_{"public"};
+    FileHandler fileHandler_{"public"};
 
     std::unordered_map<int, std::shared_ptr<Connection>> Conns_;
     std::mutex epoll_mtx;
@@ -318,8 +318,9 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
 
                     // 下面需要整合 到route里面
                     if (req.method() == "GET" || req.method() == "HEAD")
-                        request_handled = static_handler_.handle_request(req, res);
+                        request_handled = fileHandler_.static_handle(req, res);
                 }
+                
                 if (!request_handled){
                     res.set_status(404)
                         .set_content("<h1>404 Not Found</h1>", "text/html");
@@ -401,6 +402,7 @@ void Server::Routes_Init()
     route_.add_token_Validate("/download", "POST");
     route_.add_token_Validate("/dashboard.html", "GET");
     route_.add_token_Validate("/dashboard", "GET");
+
 
     route_.add_route("/register", "POST", [this](const HttpRequest &req, HttpResponse &res)
                      { authHandler_.handle_register(req, res); });

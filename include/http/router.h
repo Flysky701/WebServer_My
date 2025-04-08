@@ -28,7 +28,7 @@ class Router{
             return tokenValidate_.count(key) > 0;
         }
 
-        bool HandleRequest(const HttpRequest &req, HttpResponse &res){\
+        bool HandleRequest(const HttpRequest &req, HttpResponse &res){
 
             auto path_it = routes_.find(req.path());
             if(path_it == routes_.end())

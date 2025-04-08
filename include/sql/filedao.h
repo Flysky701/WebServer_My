@@ -127,7 +127,6 @@ std::shared_ptr<FileMeta> FileDao::GetFileById(int file_id, int user_id){
         return nullptr;
     }
 }
-
 bool FileDao::CheckOwnership(int file_id, int user_id){
     SqlGuard conn(pool_);
 
