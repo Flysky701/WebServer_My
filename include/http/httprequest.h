@@ -9,78 +9,84 @@
 
 class HttpRequest
 {
-    public:
-        enum ParseState{
-            PARSE_LINE,    // 解析请求行
-            PARSE_HEADERS, // 解析头部
-            PARSE_BODY,    // 解析正文
-            PARSE_COMPLETE,// 解析完成
-            PARSE_ERROR    // 解析错误
-        };
-        bool parse(const char *data, size_t len);
-        bool parse(const std::vector<char> &data){return parse(data.data(), data.size());}
-        bool keep_alive() const;
-    
-        const std::string &method() const { return method_; }
-        const std::string &path() const { return path_; }
-        const std::string &version() const { return version_; }
-        const std::string &body() const { return body_; }
-        const ParseState &state() const { return state_; }
+public:
+    enum ParseState
+    {
+        PARSE_LINE,     // 解析请求行
+        PARSE_HEADERS,  // 解析头部
+        PARSE_BODY,     // 解析正文
+        PARSE_COMPLETE, // 解析完成
+        PARSE_ERROR     // 解析错误
+    };
+    bool parse(const char *data, size_t len);
+    bool parse(const std::vector<char> &data) { return parse(data.data(), data.size()); }
+    bool keep_alive() const;
 
-        struct FileInfo{
-            std::string mime_type;
-            std::string file_extension;
-        };
+    const std::string &method() const { return method_; }
+    const std::string &path() const { return path_; }
+    const std::string &version() const { return version_; }
+    const std::string &body() const { return body_; }
+    const ParseState &state() const { return state_; }
 
-        std::string get_token() const;
-        static std::string get_file_extension(const std::string &path);
-        static std::string get_mime_type(const std::string &path);
-        
-        FileInfo get_file_info()const{
-            FileInfo result = {get_mime_type(path_), get_file_extension(path_)};
-            return result;
-        }
+    struct FileInfo
+    {
+        std::string mime_type;
+        std::string file_extension;
+    };
 
-        const std::unordered_map<std::string, std::string> &query_params() const { return query_params_; };
-        const std::unordered_map<std::string, std::string> &form_params() const { return form_params_; };
+    std::string get_token() const;
+    static std::string get_file_extension(const std::string &path);
+    static std::string get_mime_type(const std::string &path);
 
-    private:
-        // state
-        ParseState state_ = PARSE_LINE;
+    FileInfo get_file_info() const
+    {
+        FileInfo result = {get_mime_type(path_), get_file_extension(path_)};
+        return result;
+    }
 
-        std::string method_;
-        std::string path_;
-        std::string version_;
-        std::string body_;
+    const std::unordered_map<std::string, std::string> &query_params() const { return query_params_; };
+    const std::unordered_map<std::string, std::string> &form_params() const { return form_params_; };
 
-        std::unordered_map<std::string, std::string> headers_;
-        static const std::unordered_map<std::string, std::string> MIME_TYPES;
+private:
+    // state
+    ParseState state_ = PARSE_LINE;
 
-        bool parse_request_line(std::string_view line);
-        void parse_headers(std::string_view line);
-        void parse_body(std::string_view line);
-        static std::string url_decode(std::string_view str);
-        
-        void parse_key_value(std::string_view &str, std::unordered_map<std::string, std::string> &param_){
-            size_t param_start = 0;
-            while(param_start < str.size()){
-                size_t param_end = str.find('&', param_start);
-                if(param_end == std::string_view::npos)
+    std::string method_;
+    std::string path_;
+    std::string version_;
+    std::string body_;
+
+    std::unordered_map<std::string, std::string> headers_;
+    static const std::unordered_map<std::string, std::string> MIME_TYPES;
+
+    bool parse_request_line(std::string_view line);
+    void parse_headers(std::string_view line);
+    void parse_body(std::string_view line);
+    static std::string url_decode(std::string_view str);
+
+    void parse_key_value(std::string_view &str, std::unordered_map<std::string, std::string> &param_)
+    {
+        size_t param_start = 0;
+        while (param_start < str.size())
+        {
+            size_t param_end = str.find('&', param_start);
+            if (param_end == std::string_view::npos)
                 param_end = str.size();
-                std::string_view param = str.substr(param_start, param_end - param_start);
-                size_t eq_pos = param.find('=');
-            
-                if(eq_pos != std::string_view::npos){
-                    std::string key = url_decode(param.substr(0, eq_pos));
-                    std::string value = url_decode(param.substr(eq_pos + 1));
-                    param_.emplace(key, value); 
-                }
-                param_start = param_end + 1;
-            }
-        }
+            std::string_view param = str.substr(param_start, param_end - param_start);
+            size_t eq_pos = param.find('=');
 
-        std::unordered_map<std::string, std::string> query_params_;
-        std::unordered_map<std::string, std::string> form_params_;
+            if (eq_pos != std::string_view::npos)
+            {
+                std::string key = url_decode(param.substr(0, eq_pos));
+                std::string value = url_decode(param.substr(eq_pos + 1));
+                param_.emplace(key, value);
+            }
+            param_start = param_end + 1;
+        }
+    }
+
+    std::unordered_map<std::string, std::string> query_params_;
+    std::unordered_map<std::string, std::string> form_params_;
 };
 
 using std::string;
@@ -117,18 +123,22 @@ string HttpRequest::get_mime_type(const string &path)
     return "application/octet-stream";
 }
 
-string HttpRequest::get_token() const {
+string HttpRequest::get_token() const
+{
     // Auth头
-    auto auth_it = headers_.find("Authorization");
-    if(auth_it != headers_.end()){
+    auto auth_it = headers_.find("authorization");
+    if (auth_it != headers_.end())
+    {
         std::string auth_headers = auth_it->second;
-        if(auth_headers.find("Bearer ") == 0){
+        if (auth_headers.find("bearer ") == 0)
+        {
+            LOG_INFO("展示解析token {}", auth_headers.substr(7));
             return auth_headers.substr(7);
         }
     }
 
     // cookie
-    auto cookie_it = headers_.find("Cookie");
+    auto cookie_it = headers_.find("cookie");
     if (cookie_it != headers_.end())
     {
         std::string cookies = cookie_it->second;
@@ -150,23 +160,31 @@ bool HttpRequest::parse(const char *data, size_t len)
     std::string_view input(data, len);
     size_t pos = 0;
 
-    while (pos < input.size() && state_ != PARSE_ERROR && state_ != PARSE_COMPLETE){
+    LOG_DEBUG("展示接受数据: \n {}", input);
+
+    while (pos < input.size() && state_ != PARSE_ERROR && state_ != PARSE_COMPLETE)
+    {
         string_view line;
-        if(state_ == PARSE_BODY){
+        if (state_ == PARSE_BODY)
+        {
             line = input.substr(pos);
             LOG_DEBUG("show:{}", line);
-        }else {
+        }
+        else
+        {
             size_t line_end = input.find("\r\n", pos);
             if (line_end == string::npos)
                 break;
-    
+
             line = input.substr(pos, line_end - pos);
             pos = line_end + 2;
         }
 
-        switch (state_){
+        switch (state_)
+        {
         case PARSE_LINE:
-            if (parse_request_line(line) == false){
+            if (parse_request_line(line) == false)
+            {
                 state_ = PARSE_ERROR;
                 return false;
             }
@@ -174,15 +192,19 @@ bool HttpRequest::parse(const char *data, size_t len)
                 state_ = PARSE_HEADERS;
             break;
         case PARSE_HEADERS:
-            if (line.empty()){
-                if(method_ == "POST" || method_ == "PUT") {
+            if (line.empty())
+            {
+                if (method_ == "POST" || method_ == "PUT"){
                     state_ = PARSE_BODY;
-                }else 
+                }
+                else
                     state_ = PARSE_COMPLETE;
-            }else 
+            }
+            else
                 parse_headers(line);
             break;
-        case PARSE_BODY:{
+        case PARSE_BODY:
+        {
             size_t content_length = 0;
             content_length = std::stoul(headers_.at("content-length"));
 
@@ -192,7 +214,8 @@ bool HttpRequest::parse(const char *data, size_t len)
             body_.append(input.substr(pos, take));
             pos += take;
 
-            if (body_.size() >= content_length){
+            if (body_.size() >= content_length)
+            {
                 parse_body(body_);
                 state_ = PARSE_COMPLETE;
             }
@@ -223,12 +246,15 @@ bool HttpRequest::parse_request_line(string_view line)
 
     string_view full_path = line.substr(path_start, path_end - path_start);
     size_t query_start = full_path.find('?');
-    
-    if(query_start != string_view::npos){
+
+    if (query_start != string_view::npos)
+    {
         path_ = full_path.substr(0, query_start);
         string_view query_str = full_path.substr(query_start + 1);
         parse_key_value(query_str, query_params_);
-    }else {
+    }
+    else
+    {
         path_ = full_path;
     }
 
@@ -246,38 +272,44 @@ void HttpRequest::parse_headers(string_view line)
         return;
 
     string key(line.substr(0, colon));
-    transform(key.begin(), key.end(), key.begin(), ::tolower);
+    transform(key.begin(), key.end(), key.begin(), ::tolower); // 转小写
 
     string_view value = line.substr(colon + 1);
-    
+
     value.remove_prefix(std::min(value.find_first_not_of(" "), value.size()));
     value.remove_suffix(value.size() - std::min(value.find_last_not_of(" \r") + 1, value.size()));
 
     headers_[key] = value;
 }
 
-void HttpRequest::parse_body(string_view line){
+void HttpRequest::parse_body(string_view line)
+{
     // LOG_DEBUG("parse_body函数");
     body_ = line;
     if (headers_.count("content-type") &&
-        headers_["content-type"].find("x-www-form-urlencoded") != string::npos){
+        headers_["content-type"].find("x-www-form-urlencoded") != string::npos)
+    {
         parse_key_value(line, form_params_);
     }
 }
 
-string HttpRequest::url_decode(string_view str){
+string HttpRequest::url_decode(string_view str)
+{
     string res;
-    for(size_t i = 0; i < str.size(); i ++){
-        if(str[i] == '%' && i+2 < str.size()){
+    for (size_t i = 0; i < str.size(); i++)
+    {
+        if (str[i] == '%' && i + 2 < str.size())
+        {
             int hex_val;
-            if(sscanf(str.substr(i + 1, 2).data(), "%02x", &hex_val) == 1){
+            if (sscanf(str.substr(i + 1, 2).data(), "%02x", &hex_val) == 1)
+            {
                 res += static_cast<char>(hex_val);
                 i += 2;
             }
         }
-        else if(str[i] == '+')
+        else if (str[i] == '+')
             res += ' ';
-        else 
+        else
             res += str[i];
     }
     return res;
@@ -286,7 +318,8 @@ string HttpRequest::url_decode(string_view str){
 bool HttpRequest::keep_alive() const
 {
     auto it = headers_.find("connection");
-    if (it != headers_.end()){
+    if (it != headers_.end())
+    {
         return it->second == "keep-alive" || (version_ == "HTTP/1.1" && it->second != "close");
     }
     return version_ == "HTTP/1.1";

@@ -44,7 +44,8 @@ class TokenManager{
 
 bool TokenManager::Validate(const HttpRequest &req, std::string *out_user){
     std::string token = req.get_token();
-    if(token.empty())
+    LOG_DEBUG("解析的Token: {}", token);
+    if (token.empty())
         return false;
 
     std::lock_guard<std::mutex> lock(mtx_);
@@ -57,7 +58,9 @@ bool TokenManager::Validate(const HttpRequest &req, std::string *out_user){
         }
         if(out_user)
             *out_user = it->second.username;
+        return true;
     }
+    LOG_DEBUG("验证token失败");
     return false;
 }
 
