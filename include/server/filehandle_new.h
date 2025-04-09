@@ -146,7 +146,3 @@ bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
     res.set_status(201);
     return true;
 }
-
-bool FileHandler::handle_userinfo(const HttpRequest &req, HttpResponse &res){
-    if(req.method != )
-}

@@ -8,10 +8,16 @@
 
 class UserDao{
     public:
+        struct UserQuota {
+            uint64_t total;
+            uint64_t used;
+        };
+
         explicit UserDao(SqlConnPool &pool): pool_(pool) {};
         // 验证用户
         bool validata(const std::string &username, const std::string &password);
         bool create(const std::string &username, const std::string &password);
+        UserQuota usedInfo(const std::string &username);
     
     private:
         SqlConnPool& pool_;
@@ -56,6 +62,29 @@ bool UserDao::validata(const std::string &username, const std::string &password)
     catch (sql::SQLException &e)
     {
         LOG_ERROR("用户验证SQL错误" + std::string(e.what()));
+        throw;
+    }
+}
+
+UserDao::UserQuota UserDao::usedInfo (const std::string &username){
+    SqlGuard conn(pool_);
+    try{
+        auto stmt = conn -> prepareStatement(
+            "SELECT total_quota, used_quota FROM users WHERE username = ?"
+        );
+        stmt -> setString(1, username);
+        auto res = stmt ->executeQuery();
+
+        if(res -> next()){
+            UserQuota tmp;
+            tmp.total = res->getUInt64("totle_quota");
+            tmp.used = res->getUInt64("used_quota");
+            return tmp;
+        }else{
+            throw std::runtime_error("User not found");
+        }
+    }catch(sql::SQLException &e){
+        LOG_ERROR("用户查询SQL错误" + std::string(e.what()));
         throw;
     }
 }
