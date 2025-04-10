@@ -58,7 +58,7 @@ void AuthHandler::handle_login(const HttpRequest &req, HttpResponse &res)
         if (dao_.validata(username, password))
         {
 
-            string token = tokenManager_.Generate(username);
+            string token = tokenManager_.Generate(dao_.userId(username));
             LOG_DEBUG("加入token {}", token);
             //
             res.set_header("Authorization", "Bearer " + token);

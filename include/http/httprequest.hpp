@@ -49,6 +49,14 @@ public:
     const std::unordered_map<std::string, std::string> &query_params() const { return query_params_; };
     const std::unordered_map<std::string, std::string> &form_params() const { return form_params_; };
 
+    void set_context(const std::string& key, const std::string& value){
+        context_[key] = value;
+    }
+    std::string get_context(const string &key)const{
+        auto it = context_.find(key);
+        return it != context_.end() ? it->second : "";
+    }
+
 private:
     // state
     ParseState state_ = PARSE_LINE;
@@ -59,6 +67,7 @@ private:
     std::string body_;
 
     std::unordered_map<std::string, std::string> headers_;
+    std::unordered_map<std::string, std::string>context_;
     static const std::unordered_map<std::string, std::string> MIME_TYPES;
 
     bool parse_request_line(std::string_view line);

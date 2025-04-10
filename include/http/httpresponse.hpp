@@ -12,6 +12,7 @@ class HttpResponse{
         HttpResponse &set_status(int code, const std::string &reason);
         HttpResponse &set_header(const std::string &key, const std::string &value);
         HttpResponse &set_content(const std::string &content, const std::string &mime_type);
+        HttpResponse &set_json_content(const std::string &content);
         HttpResponse &set_keep_alive(bool keep_alive);
         std::string serialize() const;
 
@@ -24,12 +25,9 @@ class HttpResponse{
         bool keep_alive_;
         static std::string default_reason(const int code){
             static const std::unordered_map<int, std::string> reasons = {
-                {200, "OK"},
-                {404, "Not Found"},
-                {403, "Forbidden"},
-                {500, "Internal Server Error"}};
-
-            return reasons.count(code) ? reasons.at(code) : "Unknown";
+                {200, "OK"}, {201, "Created"}, {204, "No Content"}, {301, "Moved Permanently"}, {302, "Found"}, {400, "Bad Request"}, {401, "Unauthorized"}, {403, "Forbidden"}, {404, "Not Found"}, {500, "Internal Server Error"}
+            };
+            return reasons.count(code)? reasons.at(code): "Unknown";
         }
 };
 
@@ -47,7 +45,12 @@ HttpResponse &HttpResponse::set_content(const std::string &content, const std::s
     content_ = content;
     return set_header("Content-Type", mime_type).set_header("Content-Length", std::to_string(content.size()));
 }
-HttpResponse &HttpResponse::set_keep_alive(bool keep_alive){
+HttpResponse &HttpResponse::set_json_content(const std::string &content){
+    return set_content(content, "application/json");
+}
+
+HttpResponse &HttpResponse::set_keep_alive(bool keep_alive)
+{
     keep_alive_ = keep_alive;
     return set_header("Connection", keep_alive ? "keep-alive" : "close");
 }
