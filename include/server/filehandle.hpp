@@ -93,8 +93,10 @@ bool FileHandler::static_handle(const HttpRequest &req, HttpResponse &res){
 // 需要融合 filedao 和 userdao
 // 下方未测试 
 bool FileHandler::handle_userinfo(const HttpRequest &req, HttpResponse &res){
-    if(req.method() == "")
+    if(req.method() != "GET")
         return false;
+    int user_id;
+    
 }
 
 // 下面需要重写

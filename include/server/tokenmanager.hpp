@@ -11,12 +11,12 @@
 class TokenManager{
     public:
         struct Session{
-            std::string username;
+            int user_id;
             time_t create_time;
         };
 
-        std::string Generate(const std::string &username);
-        bool Validate(const HttpRequest &req, std::string *out_user = nullptr);
+        std::string Generate(int user_id);
+        bool Validate(std::string &token, int *out_user_id = nullptr);
 
         void CleanupExpired(int max_age = DEFAULT_MAX_AGE);
 
@@ -28,7 +28,10 @@ class TokenManager{
         std::string GenerateRandToken(){
             static std::random_device rd;
             static std::mt19937 gen(rd());
-            static std::string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+            static std::string chars =
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "0123456789";
             static std::uniform_int_distribution<> dis(0, sizeof(chars) - 2);
 
             std::string token(32, '\0');
@@ -42,12 +45,8 @@ class TokenManager{
         }
 };
 
-bool TokenManager::Validate(const HttpRequest &req, std::string *out_user){
-    std::string token = req.get_token();
-    LOG_DEBUG("解析的Token: {}", token);
-    if (token.empty())
-        return false;
-
+bool TokenManager::Validate(std::string &token, int *out_user_id)
+{
     std::lock_guard<std::mutex> lock(mtx_);
     auto it = tokens_.find(token);
 
@@ -56,19 +55,19 @@ bool TokenManager::Validate(const HttpRequest &req, std::string *out_user){
             tokens_.erase(it);
             return false;
         }
-        if(out_user)
-            *out_user = it->second.username;
+        if(out_user_id)
+            *out_user_id = it->second.user_id;
         return true;
     }
     LOG_DEBUG("验证token失败");
     return false;
 }
 
-std::string TokenManager::Generate(const std::string &username){
+std::string TokenManager::Generate(int user_id){
     std::string token = GenerateRandToken();
     {
         std::lock_guard<std::mutex> lock(mtx_);
-        tokens_[token] = {username, time(nullptr)};
+        tokens_[token] = {user_id, time(nullptr)};
     }
     return token;
 }

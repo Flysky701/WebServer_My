@@ -17,8 +17,9 @@ class UserDao{
         // 验证用户
         bool validata(const std::string &username, const std::string &password);
         bool create(const std::string &username, const std::string &password);
-        UserQuota usedInfo(const std::string &username);
-    
+        int userId(const std::string &username);
+        UserQuota usedInfo(const int user_id);
+
     private:
         SqlConnPool& pool_;
 };
@@ -55,9 +56,10 @@ bool UserDao::validata(const std::string &username, const std::string &password)
         LOG_DEBUG("验证用户中");
         if(res -> next()){
             return res->getString("password") == password;
-        }
-        // LOG_DEBUG("验证用户失败");
-        return false;
+        }else {
+            throw std::runtime_error("用户不存在");
+            return false;
+        }        
     }
     catch (sql::SQLException &e)
     {
@@ -65,14 +67,30 @@ bool UserDao::validata(const std::string &username, const std::string &password)
         throw;
     }
 }
+int UserDao::userId(const std::string &username){
+    SqlGuard conn(pool_);
+    try{
+        auto stmt = conn->prepareStatement(
+            "SELECT id FROM users WHERE username = ?");
+        stmt->setString(1, username);
+        auto res = stmt->executeQuery();
+        if(res -> next())
+            return res->getInt("id");
+        else
+            throw std::runtime_error("用户不存在");
+    }catch(sql::SQLException &e){
+        LOG_ERROR("用户查询SQL错误" + std::string(e.what()));
+        throw;
+    }
+}
 
-UserQuota UserDao::usedInfo (const std::string &username){
+UserQuota UserDao::usedInfo (const int user_id){
     SqlGuard conn(pool_);
     try{
         auto stmt = conn -> prepareStatement(
-            "SELECT total_quota, used_quota FROM users WHERE username = ?"
+            "SELECT total_quota, used_quota FROM users WHERE id = ?"
         );
-        stmt -> setString(1, username);
+        stmt -> setInt(1, user_id);
         auto res = stmt ->executeQuery();
 
         if(res -> next()){

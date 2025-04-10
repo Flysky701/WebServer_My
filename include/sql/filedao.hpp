@@ -71,7 +71,7 @@ bool FileDao::DeleteFile(int file_id, int user_id){
     try
     {
         auto get_size = conn->prepareStatement(
-            "SELECY file_size FROM files WHERE id = ? AND users_id = ?");
+            "SELECT file_size FROM files WHERE id = ? AND users_id = ?");
 
         get_size->setInt(1, file_id);
         get_size->setInt(2, user_id);
@@ -80,11 +80,11 @@ bool FileDao::DeleteFile(int file_id, int user_id){
         uint64_t size = res->getUInt64("file_size");
 
         auto update_user = conn->prepareStatement(
-            "UPDATA users SET used_quota = used_quota - ? WHERE id = ?"
+            "UPDATE users SET used_quota = used_quota - ? WHERE id = ?"
         );
         update_user->setUInt64(1, size);
         update_user->setInt(2, user_id);
-        update_user->executeQuery();
+        update_user->executeUpdate();
 
         auto stmt = conn->prepareStatement("UPDATE files SET is_deleted = TRUE "
                                            "WHERE id = ? AND user_id = ?");
