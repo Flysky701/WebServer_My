@@ -15,7 +15,7 @@ using std::vector;
 class Router{
     
     public:
-        using Middleware = std::function<bool(const HttpRequest &, HttpResponse &)>;
+        using Middleware = std::function<bool(HttpRequest &, HttpResponse &)>;
         using Handler = std::function<void(const HttpRequest &, HttpResponse &)>;
 
         void add_middleware(Middleware mw){
@@ -35,7 +35,7 @@ class Router{
             return tokenValidate_.count(key) > 0;
         }
 
-        bool HandleRequest(const HttpRequest &req, HttpResponse &res){
+        bool HandleRequest(HttpRequest &req, HttpResponse &res){
             for(auto& mw: middlewares_){
                 if(!mw(req, res))
                     return false;

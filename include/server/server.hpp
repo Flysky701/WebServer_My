@@ -401,7 +401,7 @@ void Server::Routes_Init(){
     route_.add_route("/login", "POST", [this](const HttpRequest &req, HttpResponse &res)
                      { authHandler_.handle_login(req, res); });
 
-    auto token_middleware = [&](const HttpRequest &req, HttpResponse &res) -> bool
+    auto token_middleware = [&]( HttpRequest &req, HttpResponse &res) -> bool
     {
         if(!route_.IsVaildate(req))
             return true;
@@ -419,7 +419,7 @@ void Server::Routes_Init(){
             res.set_status(401).set_content("Invalid token");
             return false;
         }
-        // req.
+        req.set_context("user_id", std::to_string(user_id));
         return true;
     };
     route_.add_middleware(token_middleware);

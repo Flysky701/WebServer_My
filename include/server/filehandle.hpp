@@ -95,7 +95,7 @@ bool FileHandler::static_handle(const HttpRequest &req, HttpResponse &res){
 bool FileHandler::handle_userinfo(const HttpRequest &req, HttpResponse &res){
     if(req.method() != "GET")
         return false;
-    int user_id;
+    int user_id = atoi(req.get_context("user_id").data());
     
 }
 
