@@ -307,19 +307,11 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
             LOG_DEBUG("{}, {}, {}", req.method(), req.path(), req.version());
             try
             {
-                bool check = true;
-                if (route_.IsVaildate(req)){
-                    LOG_INFO("进入token Vaildate{}, {}", req.method(), req.path());
-                    check = tokenManager_.Validate(req);
-                }
                 
-                if(check){
-                    request_handled = route_.HandleRequest(req, res);
-
-                    // 下面需要整合 到route里面
-                    if (req.method() == "GET" || req.method() == "HEAD")
-                        request_handled = fileHandler_.static_handle(req, res);
-                }
+                request_handled = route_.HandleRequest(req, res);
+                // 下面需要整合 到route里面
+                if (req.method() == "GET" || req.method() == "HEAD")
+                    request_handled = fileHandler_.static_handle(req, res);
                 
                 if (!request_handled){
                     res.set_status(404)
@@ -395,16 +387,40 @@ void Server::CloseConnection(std::shared_ptr<Connection> conn)
         }
     }
 }
+void Server::Routes_Init(){
 
-void Server::Routes_Init()
-{
+
+    route_.add_token_Validate("/api/userinfo", "GET");
+    // route_.add_route("", "");
+
     route_.add_token_Validate("/dashboard1.html", "GET");
-    // route_.add_token_Validate("/api")
-
 
     route_.add_route("/register", "POST", [this](const HttpRequest &req, HttpResponse &res)
                      { authHandler_.handle_register(req, res); });
 
     route_.add_route("/login", "POST", [this](const HttpRequest &req, HttpResponse &res)
                      { authHandler_.handle_login(req, res); });
+
+    auto token_middleware = [&](const HttpRequest &req, HttpResponse &res) -> bool
+    {
+        if(!route_.IsVaildate(req))
+            return true;
+
+        std::string token = req.get_token();
+        if(token.empty())
+        {
+            res.set_status(401).set_content("Missing token");
+            return false;
+        }
+
+        int user_id;
+        if(!tokenManager_.Validate(token, &user_id))
+        {
+            res.set_status(401).set_content("Invalid token");
+            return false;
+        }
+        // req.
+        return true;
+    };
+    route_.add_middleware(token_middleware);
 }
