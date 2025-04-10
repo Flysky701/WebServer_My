@@ -7,8 +7,8 @@
 #include <string.h>
 #include <errno.h>
 
-#include "httpresponse.h"
-#include "connection.h"
+#include "httpresponse.hpp"
+#include "connection.hpp"
 #include "log.h"
 
 class DownLoader{

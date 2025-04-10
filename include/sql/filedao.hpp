@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include "sqlconnpool.h"
+#include "sqlconnpool.hpp"
 
 struct FileMeta{
     int id;
@@ -13,6 +13,7 @@ struct FileMeta{
     std::string creatat;
     bool is_del = false;
 };
+
 class FileDao
 {
     public:
@@ -29,8 +30,21 @@ class FileDao
  
 bool FileDao::CreatFile(const FileMeta &meta){
     SqlGuard conn(pool_);
+    conn->setAutoCommit(false);
 
     try{
+
+        auto update_user = conn->prepareStatement(
+            "UPDATE users SET used_quota = used_quota + ? "
+            "WHERE id = ? AND (total_quota - used_quota) >= ?");
+        update_user->setUInt64(1, meta.file_size);
+        update_user->setInt(2, meta.user_id);
+        update_user->setUInt64(3, meta.file_size);
+        if(update_user -> executeQuery() == 0){
+            throw std::runtime_error("存储空间不足或用户不存在");
+            return false;
+        }
+
         auto stmt = conn->prepareStatement(
             "INSERT INTO files (filename, user_id, file_size, file_path) "
             "VALUES (?, ?, ?, ?)");
@@ -39,29 +53,51 @@ bool FileDao::CreatFile(const FileMeta &meta){
         stmt->setInt(2, meta.user_id);
         stmt->setUInt64(3, meta.file_size);
         stmt->setString(4, meta.file_path);
-        return stmt->executeUpdate() > 0;
+        stmt->executeUpdate();
+
+        conn->commit();
+        return true;
     }
     catch (sql::SQLException &e)
     {
         LOG_ERROR("创建文件失败：" +  std::string(e.what()));
+        conn->rollback();
         return false;
     }
 }
 bool FileDao::DeleteFile(int file_id, int user_id){
     SqlGuard conn(pool_);
+    conn->setAutoCommit(false);
+    try
+    {
+        auto get_size = conn->prepareStatement(
+            "SELECY file_size FROM files WHERE id = ? AND users_id = ?");
 
-    try{
-        auto stmt = conn->prepareStatement(
-            "UPDATE files SET is_deleted = TRUE "
-            "WHERE id = ? AND user_id = ?");
+        get_size->setInt(1, file_id);
+        get_size->setInt(2, user_id);
+        auto res = get_size->executeQuery();
+        if(!res -> next()) return false;
+        uint64_t size = res->getUInt64("file_size");
+
+        auto update_user = conn->prepareStatement(
+            "UPDATA users SET used_quota = used_quota - ? WHERE id = ?"
+        );
+        update_user->setUInt64(1, size);
+        update_user->setInt(2, user_id);
+        update_user->executeQuery();
+
+        auto stmt = conn->prepareStatement("UPDATE files SET is_deleted = TRUE "
+                                           "WHERE id = ? AND user_id = ?");
         stmt->setInt(1, file_id);
         stmt->setInt(2, user_id);
+        stmt->executeUpdate();
 
-        return stmt->executeUpdate() > 0;
+        conn->commit();
+        return true;
     }
-    catch (sql::SQLException &e)
-    {
+    catch (sql::SQLException &e){
         LOG_ERROR("删除文件失败：" + std::string(e.what()));
+        conn->rollback();
         return false;
     }
 }

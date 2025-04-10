@@ -2,16 +2,16 @@
 
 #include <memory>
 #include <cppconn/prepared_statement.h>
-#include "sqlconnpool.h"
+#include "sqlconnpool.hpp"
 #include "log.h"
-
+struct UserQuota {
+    uint64_t total;
+    uint64_t used;
+};
 
 class UserDao{
     public:
-        struct UserQuota {
-            uint64_t total;
-            uint64_t used;
-        };
+        
 
         explicit UserDao(SqlConnPool &pool): pool_(pool) {};
         // 验证用户
@@ -66,7 +66,7 @@ bool UserDao::validata(const std::string &username, const std::string &password)
     }
 }
 
-UserDao::UserQuota UserDao::usedInfo (const std::string &username){
+UserQuota UserDao::usedInfo (const std::string &username){
     SqlGuard conn(pool_);
     try{
         auto stmt = conn -> prepareStatement(

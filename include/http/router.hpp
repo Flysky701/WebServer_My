@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 #include <functional>
-#include "httprequest.h"
-#include "httpresponse.h"
+#include "httprequest.hpp"
+#include "httpresponse.hpp"
 
 using  std::unordered_map;
 using std::string;

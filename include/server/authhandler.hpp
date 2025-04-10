@@ -1,10 +1,10 @@
 #pragma once
 
-#include "httprequest.h"
-#include "httpresponse.h"
+#include "httprequest.hpp"
+#include "httpresponse.hpp"
 
-#include "userdao.h"
-#include "tokenmanager.h"
+#include "userdao.hpp"
+#include "tokenmanager.hpp"
 #include "log.h"
 
 class AuthHandler

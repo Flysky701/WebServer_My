@@ -33,6 +33,9 @@ CREATE TABLE files (
     FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
+ALTER TABLE files 
+ADD UNIQUE uniq_user_file (user_id, file_path);
+
 -- 文件索引
 INDEX idx_user (user_id),
 INDEX idx_deleted (is_deleted),

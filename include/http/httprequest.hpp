@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <sstream>
 
+#include "log.h"
+
 class HttpRequest
 {
 public:

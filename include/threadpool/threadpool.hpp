@@ -33,11 +33,13 @@ class ThreadPool{
     
     private:
         // 虚函数机制， 统一不同类型接口
+        
         struct TaskBase {
             virtual ~TaskBase() = default;
             virtual void execute() = 0;
         };
         // 将泛型任务类型F适配到TaskBase体系
+
         template<typename F>
         struct TaskWrapper : TaskBase {
             F func;

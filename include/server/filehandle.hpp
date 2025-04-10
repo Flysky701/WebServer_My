@@ -4,11 +4,11 @@
 #include <filesystem>
 #include <fstream>
 
-#include "httprequest.h"
-#include "httpresponse.h"
+#include "httprequest.hpp"
+#include "httpresponse.hpp"
 
-#include "downloader.h"
-#include "uploader.h"
+#include "downloader.hpp"
+#include "uploader.hpp"
 
 class FileHandler
 {
@@ -21,6 +21,8 @@ class FileHandler
         bool handle_download(const HttpRequest &req, HttpResponse &res, int fd);
         bool handle_upload(const HttpRequest &req, HttpResponse &res);
         bool handle_userinfo(const HttpRequest &req, HttpResponse &res);
+        bool handle_fileinfo(const HttpRequest &req, HttpResponse &res);
+        bool handle_delfile(const HttpRequest &req, HttpResponse &res);
         // bool handle_
 
     private:
@@ -87,7 +89,15 @@ bool FileHandler::static_handle(const HttpRequest &req, HttpResponse &res){
         res.set_content("");
     return true;
 }
+// 下方为主要实现
+// 需要融合 filedao 和 userdao
 // 下方未测试 
+bool FileHandler::handle_userinfo(const HttpRequest &req, HttpResponse &res){
+    if(req.method() == "")
+        return false;
+}
+
+// 下面需要重写
 bool FileHandler::handle_download(const HttpRequest &req, HttpResponse &res, int sent_fd){
     
     if (req.method() != "GET" && req.method() != "HEAD")
