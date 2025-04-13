@@ -52,7 +52,7 @@ public:
     void set_context(const std::string& key, const std::string& value){
         context_[key] = value;
     }
-    std::string get_context(const string &key)const{
+    std::string get_context(const std::string &key) const{
         auto it = context_.find(key);
         return it != context_.end() ? it->second : "";
     }
