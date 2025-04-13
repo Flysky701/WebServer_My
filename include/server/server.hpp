@@ -41,7 +41,9 @@ public:
           pool_(32),
           sqlConnPool_(SqlConnPool::instance()),
           userDao_(SqlConnPool::instance()),
+          fileDao_(SqlConnPool::instance()),
           authHandler_(userDao_, tokenManager_),
+          fileHandler_("public", userDao_, fileDao_),
           timer_([this](int fd)
                  { HandleTimeout(fd); })
     {
@@ -80,12 +82,13 @@ private:
     static constexpr int CONN_TIMEOUT = 60000;
     SqlConnPool &sqlConnPool_;
     UserDao userDao_;
+    FileDao fileDao_;
     AuthHandler authHandler_;
     Router route_;
     TokenManager tokenManager_;
 
     // for test
-    FileHandler fileHandler_{"public"};
+    FileHandler fileHandler_;
 
     std::unordered_map<int, std::shared_ptr<Connection>> Conns_;
     std::mutex epoll_mtx;
@@ -310,7 +313,7 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
                 
                 request_handled = route_.HandleRequest(req, res);
                 // 下面需要整合 到route里面
-                if (req.method() == "GET" || req.method() == "HEAD")
+                if (request_handled == false && (req.method() == "GET" || req.method() == "HEAD"))
                     request_handled = fileHandler_.static_handle(req, res);
                 
                 if (!request_handled){
@@ -331,7 +334,7 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
             // 序列化响应
             std::string resp_str = std::move(res.serialize());
             // DEBUG
-            // LOG_DEBUG("响应内容:\n" + resp_str);
+            LOG_DEBUG("响应内容:\n" + resp_str);
             {
                 std::lock_guard<std::mutex> lock(epoll_mtx);
                 conn->WriteData(resp_str);
@@ -390,8 +393,12 @@ void Server::CloseConnection(std::shared_ptr<Connection> conn)
 void Server::Routes_Init(){
 
 
-    route_.add_token_Validate("/api/userinfo", "GET");
-    // route_.add_route("", "");
+    route_.add_token_Validate("/api/user", "GET");
+    route_.add_route("/api/user", "GET", [this](const HttpRequest &req, HttpResponse &res)
+                     { fileHandler_.handle_userinfo(req, res); });
+    route_.add_token_Validate("/api/files", "GET");
+    route_.add_route("/api/files", "GET", [this](const HttpRequest &req, HttpResponse &res)
+                     { fileHandler_.handle_fileinfo(req, res); });
 
     route_.add_token_Validate("/dashboard1.html", "GET");
 
@@ -400,6 +407,7 @@ void Server::Routes_Init(){
 
     route_.add_route("/login", "POST", [this](const HttpRequest &req, HttpResponse &res)
                      { authHandler_.handle_login(req, res); });
+
 
     auto token_middleware = [&]( HttpRequest &req, HttpResponse &res) -> bool
     {

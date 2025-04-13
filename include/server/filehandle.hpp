@@ -10,11 +10,16 @@
 #include "downloader.hpp"
 #include "uploader.hpp"
 
+#include "filedao.hpp"
+#include "userdao.hpp"
+
+#include "log.h"
+
 class FileHandler
 {
     public:
-        explicit FileHandler(const std::string &base_dir)
-            : base_dir_(base_dir){}
+        explicit FileHandler(const std::string &base_dir, UserDao &user_dao, FileDao &file_dao)
+            : base_dir_(base_dir), file_dao_(file_dao), user_dao_(user_dao){}
 
         // bool handle_request(const HttpRequest &req, HttpResponse &res, Connection &conn);
         bool static_handle(const HttpRequest &req, HttpResponse &res);
@@ -23,10 +28,12 @@ class FileHandler
         bool handle_userinfo(const HttpRequest &req, HttpResponse &res);
         bool handle_fileinfo(const HttpRequest &req, HttpResponse &res);
         bool handle_delfile(const HttpRequest &req, HttpResponse &res);
-        // bool handle_
 
     private:
         std::string base_dir_;
+        UserDao &user_dao_;
+        FileDao &file_dao_;
+        // 处理文件上传和下载的类
 
         // 路径解析相关方法
         std::string resolve_path(const std::string &path) { 
@@ -89,14 +96,76 @@ bool FileHandler::static_handle(const HttpRequest &req, HttpResponse &res){
         res.set_content("");
     return true;
 }
-// 下方为主要实现
-// 需要融合 filedao 和 userdao
-// 下方未测试 
+
 bool FileHandler::handle_userinfo(const HttpRequest &req, HttpResponse &res){
     if(req.method() != "GET")
         return false;
-    int user_id = atoi(req.get_context("user_id").data());
+
+    int user_id = 0;
+    try{
+        string key = "user_id";
+        user_id = std::stoi(req.get_context(key));
+    }catch (const std::exception &e){
+        LOG_ERROR("获取用户ID失败: {}", std::string(e.what()));
+        res.set_status(403);
+        return true;
+    }
     
+    string username = user_dao_.username(user_id);
+    auto msg = user_dao_.usedInfo(user_id);
+
+    string json =  R"({
+        "code": 200,
+        "data": {
+            "username": ")" + username + R"(",
+            "storage_used": )" + std::to_string(msg.used) + R"(,
+            "storage_total": )" + std::to_string(msg.total) + R"(
+        }
+    })";
+
+    res.set_json_content(json)
+        .set_status(200);
+    return true;
+}
+// 下方为主要实现
+// 需要融合 filedao 和 userdao
+// 下方未测试 
+bool FileHandler::handle_fileinfo(const HttpRequest &req, HttpResponse &res){
+    if(req.method() != "GET")
+        return false;
+
+    int user_id = 0;
+    try{
+        string key = "user_id";
+        user_id = std::stoi(req.get_context(key));
+    }catch (const std::exception &e){
+        LOG_ERROR("获取用户ID失败: {}", std::string(e.what()));
+        res.set_status(403);
+        return true;
+    }
+
+    auto files = file_dao_.ListFilesByUser(user_id);
+    
+    std::string json_body = "[";
+    for (auto& fileinfo_ : files) {
+        json_body += R"({
+            "file_id": )" + std::to_string(fileinfo_.id) + R"(,
+            "filename": ")" + fileinfo_.file_name + R"(",
+            "filesize": )" + std::to_string(fileinfo_.file_size) + R"(,
+            "created_at": ")" + fileinfo_.creatat + R"("
+        })";
+        if (&fileinfo_ != &files.back()) {
+            json_body += ",";
+        }
+    }
+    json_body += "]";
+    std::string json = R"({
+        "code": 200,
+        "data": )" + json_body + R"(})";
+    
+    res.set_json_content(json)
+        .set_status(200);
+    return true;
 }
 
 // 下面需要重写

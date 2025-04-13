@@ -102,7 +102,7 @@ bool FileDao::DeleteFile(int file_id, int user_id){
     }
 }
 
-std::vector<FileMeta> FileDao::ListFilesByUser(int user_id, int limit = 100){
+std::vector<FileMeta> FileDao::ListFilesByUser(int user_id, int limit){
     SqlGuard conn(pool_);
     std::vector<FileMeta> files_;
 
@@ -156,6 +156,7 @@ std::shared_ptr<FileMeta> FileDao::GetFileById(int file_id, int user_id){
             tmp -> file_name = res->getString("filename");
             return tmp;
         }
+        return nullptr;
     }
     catch (sql::SQLException &e){
         LOG_ERROR("获取文件失败：" + std::string(e.what()));

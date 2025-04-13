@@ -18,6 +18,7 @@ class UserDao{
         bool validata(const std::string &username, const std::string &password);
         bool create(const std::string &username, const std::string &password);
         int userId(const std::string &username);
+        std::string username(const int user_id);
         UserQuota usedInfo(const int user_id);
 
     private:
@@ -83,8 +84,25 @@ int UserDao::userId(const std::string &username){
         throw;
     }
 }
+std::string UserDao::username(const int user_id){
+    SqlGuard conn(pool_);
+    try{
+        auto stmt = conn->prepareStatement(
+            "SELECT username FROM users WHERE id = ?");
+        stmt->setInt(1, user_id);
+        auto res = stmt->executeQuery();
+        if(res -> next())
+            return res->getString("username");
+        else
+            throw std::runtime_error("用户不存在");
+    }catch(sql::SQLException &e){
+        LOG_ERROR("用户查询SQL错误" + std::string(e.what()));
+        throw;
+    }
+}
 
 UserQuota UserDao::usedInfo (const int user_id){
+    LOG_DEBUG("查询用户配额");
     SqlGuard conn(pool_);
     try{
         auto stmt = conn -> prepareStatement(
@@ -95,7 +113,7 @@ UserQuota UserDao::usedInfo (const int user_id){
 
         if(res -> next()){
             UserQuota tmp;
-            tmp.total = res->getUInt64("totle_quota");
+            tmp.total = res->getUInt64("total_quota");
             tmp.used = res->getUInt64("used_quota");
             return tmp;
         }else{
