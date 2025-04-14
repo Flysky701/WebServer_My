@@ -304,8 +304,13 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
         bool request_handled = false;
         const auto &buffer = conn->GetReadBuffer();
 
+        LOG_INFO("conn->GetReadBuffer() is OK");
+        LOG_INFO("Buffer size = {}", buffer.size());
+        // LOG_DEBUG("show buffer:{}", buffer.data());
+
         if (req.parse(buffer))
         {
+            LOG_INFO("req.parse(buffer) is OK");
             conn->ClearReadBuffer();
             LOG_DEBUG("{}, {}, {}", req.method(), req.path(), req.version());
             try
@@ -399,6 +404,10 @@ void Server::Routes_Init(){
     route_.add_token_Validate("/api/files", "GET");
     route_.add_route("/api/files", "GET", [this](const HttpRequest &req, HttpResponse &res)
                      { fileHandler_.handle_fileinfo(req, res); });
+
+    route_.add_token_Validate("/api/upload", "POST");
+    route_.add_route("/api/upload", "POST", [this](const HttpRequest &req, HttpResponse &res)
+                     { fileHandler_.handle_upload(req, res); });
 
     route_.add_token_Validate("/dashboard1.html", "GET");
 

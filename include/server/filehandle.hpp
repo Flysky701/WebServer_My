@@ -96,7 +96,7 @@ bool FileHandler::static_handle(const HttpRequest &req, HttpResponse &res){
         res.set_content("");
     return true;
 }
-
+// 下方为主要实现
 bool FileHandler::handle_userinfo(const HttpRequest &req, HttpResponse &res){
     if(req.method() != "GET")
         return false;
@@ -127,9 +127,7 @@ bool FileHandler::handle_userinfo(const HttpRequest &req, HttpResponse &res){
         .set_status(200);
     return true;
 }
-// 下方为主要实现
-// 需要融合 filedao 和 userdao
-// 下方未测试 
+
 bool FileHandler::handle_fileinfo(const HttpRequest &req, HttpResponse &res){
     if(req.method() != "GET")
         return false;
@@ -168,6 +166,40 @@ bool FileHandler::handle_fileinfo(const HttpRequest &req, HttpResponse &res){
     return true;
 }
 
+bool FileHandler::handle_delfile(const HttpRequest &req, HttpResponse &res){
+    if(req.method() != "POST")
+        return false;
+}
+
+// 下方未测试 
+bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
+    if(req.method() != "POST")
+        return false;
+    
+    std:string path = resolve_path(req.path());
+
+    if(is_safe_path(path)){
+        res.set_status(403);
+        return true;
+    }
+
+    std::string full_path = base_dir_ + path;
+    LOG_DEBUG("尝试访问文件路径: " + full_path);
+
+    if (!ensure_directory_exists(full_path)){
+        res.set_status(500);
+        return true;
+    }
+
+    if(!UpLoader::UploadHandle(full_path, req, res)){
+        res.set_status(500);
+        return true;
+    }
+
+    res.set_status(201);
+    return true;
+}
+
 // 下面需要重写
 bool FileHandler::handle_download(const HttpRequest &req, HttpResponse &res, int sent_fd){
     
@@ -200,30 +232,3 @@ bool FileHandler::handle_download(const HttpRequest &req, HttpResponse &res, int
     return true;
 }
 
-bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
-    if(req.method() != "POST" && req.method() != "PUT")
-        return false;
-    
-    std:string path = resolve_path(req.path());
-
-    if(is_safe_path(path)){
-        res.set_status(403);
-        return true;
-    }
-
-    std::string full_path = base_dir_ + path;
-    LOG_DEBUG("尝试访问文件路径: " + full_path);
-
-    if (!ensure_directory_exists(full_path)){
-        res.set_status(500);
-        return true;
-    }
-
-    if(!UpLoader::UploadHandle(full_path, req, res)){
-        res.set_status(500);
-        return true;
-    }
-
-    res.set_status(201);
-    return true;
-}

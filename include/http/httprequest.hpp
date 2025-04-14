@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include <sstream>
+#include <random>
 
 #include "log.h"
 
@@ -30,10 +31,16 @@ public:
     const std::string &body() const { return body_; }
     const ParseState &state() const { return state_; }
 
+
     struct FileInfo
     {
         std::string mime_type;
         std::string file_extension;
+    };
+    struct UploadFile{
+        std::string filename;
+        std::string temp_path;
+        size_t size;
     };
 
     std::string get_token() const;
@@ -48,6 +55,7 @@ public:
 
     const std::unordered_map<std::string, std::string> &query_params() const { return query_params_; };
     const std::unordered_map<std::string, std::string> &form_params() const { return form_params_; };
+    const std::unordered_map<std::string, UploadFile> &uploaded_files() const { return uploaded_files_; };
 
     void set_context(const std::string& key, const std::string& value){
         context_[key] = value;
@@ -66,13 +74,24 @@ private:
     std::string version_;
     std::string body_;
 
+    std::string current_field_name_;
+    std::string current_filename_;
+
     std::unordered_map<std::string, std::string> headers_;
-    std::unordered_map<std::string, std::string>context_;
+    std::unordered_map<std::string, std::string> context_;
+    std::unordered_map<std::string, UploadFile> uploaded_files_;
     static const std::unordered_map<std::string, std::string> MIME_TYPES;
+    
+    std::unordered_map<std::string, std::string> query_params_;
+    std::unordered_map<std::string, std::string> form_params_;
 
     bool parse_request_line(std::string_view line);
     void parse_headers(std::string_view line);
     void parse_body(std::string_view line);
+    void parse_multipart_form(const std::string &boundary);
+    void process_part_headers(std::string_view headers);
+    void handle_part_content(size_t start, size_t length);
+
     static std::string url_decode(std::string_view str);
 
     void parse_key_value(std::string_view &str, std::unordered_map<std::string, std::string> &param_)
@@ -96,8 +115,19 @@ private:
         }
     }
 
-    std::unordered_map<std::string, std::string> query_params_;
-    std::unordered_map<std::string, std::string> form_params_;
+    std::string generate_temp_path()const {
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        static std::string chars =
+            "abcdefghijklmnopqrstuvwxyz"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "0123456789";
+        static std::uniform_int_distribution<> dis(0, sizeof(chars) - 2);
+
+        std::string filename(16, '\0');
+        for (auto &c : filename) c = chars[dis(gen)];
+        return "/tmp/upload_" + filename;
+    }
 };
 
 using std::string;
@@ -134,8 +164,7 @@ string HttpRequest::get_mime_type(const string &path)
     return "application/octet-stream";
 }
 
-string HttpRequest::get_token() const
-{
+string HttpRequest::get_token() const{
     // Auth头
     auto auth_it = headers_.find("authorization");
     if (auth_it != headers_.end())
@@ -171,18 +200,15 @@ bool HttpRequest::parse(const char *data, size_t len)
     std::string_view input(data, len);
     size_t pos = 0;
 
-    LOG_DEBUG("展示接受数据: \n {}", input);
+    // LOG_DEBUG("展示接受数据: \n {}", input);
 
-    while (pos < input.size() && state_ != PARSE_ERROR && state_ != PARSE_COMPLETE)
-    {
+    while (pos < input.size() && state_ != PARSE_ERROR && state_ != PARSE_COMPLETE){
         string_view line;
-        if (state_ == PARSE_BODY)
-        {
+        if (state_ == PARSE_BODY){
             line = input.substr(pos);
             LOG_DEBUG("show:{}", line);
         }
-        else
-        {
+        else{
             size_t line_end = input.find("\r\n", pos);
             if (line_end == string::npos)
                 break;
@@ -219,7 +245,7 @@ bool HttpRequest::parse(const char *data, size_t len)
             size_t content_length = 0;
             content_length = std::stoul(headers_.at("content-length"));
 
-            // 累积 body 数据
+            // 完整读取 body 数据
             size_t needed = content_length - body_.size();
             size_t take = std::min(needed, input.size() - pos);
             body_.append(input.substr(pos, take));
@@ -297,11 +323,106 @@ void HttpRequest::parse_body(string_view line)
 {
     // LOG_DEBUG("parse_body函数");
     body_ = line;
-    if (headers_.count("content-type") &&
-        headers_["content-type"].find("x-www-form-urlencoded") != string::npos)
-    {
-        parse_key_value(line, form_params_);
+    if (headers_.count("content-type")){
+        auto &content_type = headers_.at("content-type");
+        // 表单
+        if (content_type.find("x-www-form-urlencoded") != string::npos){
+            parse_key_value(line, form_params_);
+        }
+        // 文件
+        if (content_type.find("multipart/form-data") != string::npos){
+            size_t boundary_pos = content_type.find("boundary=");
+            string boundary = content_type.substr(boundary_pos + 9);
+            parse_multipart_form(boundary);
+        }
     }
+}
+
+void HttpRequest::parse_multipart_form(const std::string &boundary)
+{
+    LOG_INFO("parse_multipart_form");
+    const std::string delimiter = "--" + boundary;
+    const std::string end_delimiter = delimiter + "--";
+    size_t pos = 0;
+
+    // 遍历所有数据块
+    while (pos < body_.size())
+    {
+        // 查找分块起始位置
+        size_t part_start = body_.find(delimiter, pos);
+        if (part_start == std::string::npos)
+            break;
+        part_start += delimiter.size() + 2; // 跳过 \r\n
+
+        // 查找分块头结束位置
+        size_t header_end = body_.find("\r\n\r\n", part_start);
+        if (header_end == std::string::npos)
+            break;
+
+        std::string_view headers(body_.data() + part_start, header_end - part_start);
+        process_part_headers(headers);
+
+        size_t content_start = header_end + 4; // 跳过 \r\n\r\n
+        size_t content_end = body_.find("\r\n" + delimiter, content_start);
+
+        // 处理内容部分
+        if (content_end != std::string::npos)
+        {
+            handle_part_content(content_start, content_end - content_start);
+            pos = content_end;
+        }
+        else
+            pos = body_.size();
+        
+    }
+}
+
+void HttpRequest::process_part_headers(std::string_view headers)
+{
+    size_t name_pos = headers.find("name=\"");
+    if (name_pos != std::string_view::npos)
+    {
+        name_pos += 6; // len("name=\") = 6;
+        size_t name_end = headers.find('"', name_pos);
+        current_field_name_ = headers.substr(name_pos, name_end - name_pos);
+    }
+
+    size_t filename_pos = headers.find("filename=\"");
+    if (filename_pos != std::string_view::npos)
+    {
+        filename_pos += 10; // len("filename=") = 10
+        size_t filename_end = headers.find('"', filename_pos);
+        current_filename_ = headers.substr(filename_pos, filename_end - filename_pos);
+    }
+}
+
+// 处理内容部分（支持大文件）
+void HttpRequest::handle_part_content(size_t start, size_t length)
+{
+    // 如果是文件上传
+    if (!current_filename_.empty()){
+        
+        // 生成安全临时文件名
+        LOG_INFO("写入文件");
+        std::string temp_path = generate_temp_path();
+
+        // 流式写入文件
+        std::ofstream outfile(temp_path, std::ios::binary);
+        outfile.write(body_.data() + start, length);
+        uploaded_files_[current_field_name_] = {
+            .filename = current_filename_,
+            .temp_path = temp_path,
+            .size = length};
+    }
+    // 普通表单字段
+    else{
+        std::string_view content(body_.data() + start, length);
+        form_params_[current_field_name_] = content;
+    }
+
+    // 重置临时变量
+    current_field_name_.clear();
+    current_filename_.clear();
 }
 
 string HttpRequest::url_decode(string_view str)
@@ -309,11 +430,9 @@ string HttpRequest::url_decode(string_view str)
     string res;
     for (size_t i = 0; i < str.size(); i++)
     {
-        if (str[i] == '%' && i + 2 < str.size())
-        {
+        if (str[i] == '%' && i + 2 < str.size()){
             int hex_val;
-            if (sscanf(str.substr(i + 1, 2).data(), "%02x", &hex_val) == 1)
-            {
+            if (sscanf(str.substr(i + 1, 2).data(), "%02x", &hex_val) == 1){
                 res += static_cast<char>(hex_val);
                 i += 2;
             }

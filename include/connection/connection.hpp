@@ -62,7 +62,7 @@ Connection::~Connection(){
     }
 }
 bool Connection::ReadData(){
-    std::lock_guard<std::mutex> lock(r_mtx_);
+    // std::lock_guard<std::mutex> lock(r_mtx_);
     std::vector<char> buffer(4096);
     ssize_t tot_read = 0;
     while (true)
@@ -71,10 +71,12 @@ bool Connection::ReadData(){
         
         if (r_bytes > 0){
             tot_read += r_bytes;
-            r_buffer.insert(r_buffer.end(), buffer.data(), buffer.data() + r_bytes);
+            {
+                std::lock_guard<std::mutex> lock(r_mtx_);
+                r_buffer.insert(r_buffer.end(), buffer.data(), buffer.data() + r_bytes);
+            }
         }
         else if (r_bytes == 0){
-            LOG_DEBUG("没有读取到字节");
             return false; // 连接关闭
         }
         else{
