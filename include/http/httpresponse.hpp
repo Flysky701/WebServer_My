@@ -25,7 +25,11 @@ class HttpResponse{
         bool keep_alive_;
         static std::string default_reason(const int code){
             static const std::unordered_map<int, std::string> reasons = {
-                {200, "OK"}, {201, "Created"}, {204, "No Content"}, {301, "Moved Permanently"}, {302, "Found"}, {400, "Bad Request"}, {401, "Unauthorized"}, {403, "Forbidden"}, {404, "Not Found"}, {500, "Internal Server Error"}
+                {200, "OK"}, {201, "Created"}, {204, "No Content"}, 
+                {301, "Moved Permanently"}, {302, "Found"}, 
+                {400, "Bad Request"}, {401, "Unauthorized"}, 
+                {403, "Forbidden"}, 
+                {404, "Not Found"}, {500, "Internal Server Error"}
             };
             return reasons.count(code)? reasons.at(code): "Unknown";
         }

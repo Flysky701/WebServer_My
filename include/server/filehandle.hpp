@@ -191,10 +191,10 @@ bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
         return true;
     }
 
-    if(!UpLoader::UploadHandle(full_path, req, res)){
-        res.set_status(500);
-        return true;
-    }
+    // if(!UpLoader::UploadHandle(full_path, req, res)){
+    //     res.set_status(500);
+    //     return true;
+    // }
 
     res.set_status(201);
     return true;
