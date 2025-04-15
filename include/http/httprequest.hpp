@@ -8,6 +8,7 @@
 #include <sstream>
 #include <random>
 
+#include "uploader.hpp"
 #include "log.h"
 
 class HttpRequest
@@ -114,20 +115,6 @@ private:
             param_start = param_end + 1;
         }
     }
-
-    std::string generate_temp_path()const {
-        static std::random_device rd;
-        static std::mt19937 gen(rd());
-        static std::string chars =
-            "abcdefghijklmnopqrstuvwxyz"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "0123456789";
-        static std::uniform_int_distribution<> dis(0, sizeof(chars) - 2);
-
-        std::string filename(16, '\0');
-        for (auto &c : filename) c = chars[dis(gen)];
-        return "/tmp/upload_" + filename;
-    }
 };
 
 using std::string;
@@ -172,7 +159,7 @@ string HttpRequest::get_token() const{
         std::string auth_headers = auth_it->second;
         if (auth_headers.find("bearer ") == 0)
         {
-            LOG_INFO("展示解析token {}", auth_headers.substr(7));
+            LOG_DEBUG("展示解析token {}", auth_headers.substr(7));
             return auth_headers.substr(7);
         }
     }
@@ -250,6 +237,7 @@ bool HttpRequest::parse(const char *data, size_t len)
             size_t take = std::min(needed, input.size() - pos);
             body_.append(input.substr(pos, take));
             pos += take;
+            LOG_DEBUG("展示body大小: {}", body_.size());
 
             if (body_.size() >= content_length)
             {
@@ -404,7 +392,8 @@ void HttpRequest::handle_part_content(size_t start, size_t length)
         
         // 生成安全临时文件名
         LOG_INFO("写入文件");
-        std::string temp_path = generate_temp_path();
+        std::string temp_path = UpLoader::generate_temp_path();
+        LOG_DEBUG("临时文件路径: {}", temp_path);
 
         // 流式写入文件
         std::ofstream outfile(temp_path, std::ios::binary);

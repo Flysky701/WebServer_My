@@ -50,6 +50,7 @@ public:
 
         InitSocket();
         Routes_Init();
+        UpLoader::Initialize();
         M_epoll_.AddFd(server_fd_, EPOLLIN);
     }
 
