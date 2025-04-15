@@ -22,7 +22,10 @@ class Connection{
         bool Flush();
         void ClearReadBuffer(){r_buffer.clear();};
         
-        const std::vector<char> &GetReadBuffer() const { return r_buffer; }
+        std::vector<char> GetReadBuffer() { 
+            std::lock_guard<std::mutex> lock(r_mtx_);
+            return r_buffer; 
+        }
         std::string &GetWriteBuffer() { return w_buffer; }
         int GetFd() const {return fd_;}
         
