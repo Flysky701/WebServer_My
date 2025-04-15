@@ -172,35 +172,63 @@ bool FileHandler::handle_delfile(const HttpRequest &req, HttpResponse &res){
 }
 
 // 下方未测试 
+// 下面需要重写
 bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
+    // 上传逻辑 -> 
     if(req.method() != "POST")
         return false;
-    
-    std:string path = resolve_path(req.path());
 
-    if(is_safe_path(path)){
+    int user_id = 0;
+    try{
+        string key = "user_id";
+        user_id = std::stoi(req.get_context(key));
+    }catch (const std::exception &e){
+        LOG_ERROR("获取用户ID失败: {}", std::string(e.what()));
         res.set_status(403);
         return true;
     }
+    
+    auto files = req.uploaded_files();
 
-    std::string full_path = base_dir_ + path;
-    LOG_DEBUG("尝试访问文件路径: " + full_path);
+    for(auto file: files){
+        auto filename = file.second.filename;
+        auto temp_path = file.second.temp_path;
+        auto size = file.second.size;
 
-    if (!ensure_directory_exists(full_path)){
-        res.set_status(500);
-        return true;
+        // 生成文件路径
+        // 需要修改
+        std::string save_path = base_dir_ + "/" + filename; 
+        LOG_DEBUG("保存文件路径: " + save_path);
+
+        // 确保目录存在
+        if (!ensure_directory_exists(save_path)){
+            res.set_status(500);
+            return true;
+        }
+
+        // 保存文件
+        if (!UpLoader::UploadHandle(save_path, req, res)){
+            res.set_status(500);
+            return true;
+        }
+
+        // 插入数据库
+        FileMeta file_meta;
+        file_meta.user_id = user_id;
+        file_meta.file_name = filename;
+        file_meta.file_size = size;
+        file_meta.file_path = save_path;
+
+        if(!file_dao_.CreatFile(file_meta)){
+            res.set_status(500);
+            return true;
+        }
     }
-
-    // if(!UpLoader::UploadHandle(full_path, req, res)){
-    //     res.set_status(500);
-    //     return true;
-    // }
 
     res.set_status(201);
     return true;
 }
 
-// 下面需要重写
 bool FileHandler::handle_download(const HttpRequest &req, HttpResponse &res, int sent_fd){
     
     if (req.method() != "GET" && req.method() != "HEAD")
