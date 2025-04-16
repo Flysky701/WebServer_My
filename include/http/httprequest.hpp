@@ -384,14 +384,12 @@ void HttpRequest::process_part_headers(std::string_view headers)
     }
 }
 
-// 处理内容部分（支持大文件）
 void HttpRequest::handle_part_content(size_t start, size_t length)
 {
     // 如果是文件上传
     if (!current_filename_.empty()){
         
-        // 生成安全临时文件名
-        LOG_INFO("写入文件");
+        // LOG_INFO("写入文件");
         std::string temp_path = UpLoader::generate_temp_path();
         LOG_DEBUG("临时文件路径: {}", temp_path);
 
@@ -403,7 +401,6 @@ void HttpRequest::handle_part_content(size_t start, size_t length)
             .temp_path = temp_path,
             .size = length};
     }
-    // 普通表单字段
     else{
         std::string_view content(body_.data() + start, length);
         form_params_[current_field_name_] = content;

@@ -23,10 +23,10 @@ class FileHandler
 
         // bool handle_request(const HttpRequest &req, HttpResponse &res, Connection &conn);
         bool static_handle(const HttpRequest &req, HttpResponse &res);
-        bool handle_download(const HttpRequest &req, HttpResponse &res, int fd);
-        bool handle_upload(const HttpRequest &req, HttpResponse &res);
         bool handle_userinfo(const HttpRequest &req, HttpResponse &res);
         bool handle_fileinfo(const HttpRequest &req, HttpResponse &res);
+        bool handle_upload(const HttpRequest &req, HttpResponse &res);
+        bool handle_download(const HttpRequest &req, HttpResponse &res, int fd);
         bool handle_delfile(const HttpRequest &req, HttpResponse &res);
 
     private:
@@ -193,30 +193,28 @@ bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
     for(auto file: files){
         auto filename = file.second.filename;
         auto temp_path = file.second.temp_path;
-        auto size = file.second.size;
+        auto file_size = file.second.size;
 
         // 生成文件路径
-        // 需要修改
-        std::string save_path = base_dir_ + "/" + filename; 
-        LOG_DEBUG("保存文件路径: " + save_path);
+        std::string save_path = UpLoader::generate_user_path(user_id, filename);
+        LOG_DEBUG("文件转存路径:{} —> {} ", temp_path, save_path);
 
-        // 确保目录存在
-        if (!ensure_directory_exists(save_path)){
-            res.set_status(500);
-            return true;
-        }
-
-        // 保存文件
-        if (!UpLoader::UploadHandle(save_path, req, res)){
-            res.set_status(500);
-            return true;
-        }
+        // 保存文件 // 50mb
+        bool success = false;
+        if (file_size < 50 * 1024 * 1024)
+            success = UpLoader::StreamUpload(temp_path, save_path);
+        else
+            success = UpLoader::MmpUpload(temp_path, save_path);
 
         // 插入数据库
+        if(!success){
+            res.set_status(500)
+                .set_content("文件保存失败");
+        }
         FileMeta file_meta;
         file_meta.user_id = user_id;
         file_meta.file_name = filename;
-        file_meta.file_size = size;
+        file_meta.file_size = file_size;
         file_meta.file_path = save_path;
 
         if(!file_dao_.CreatFile(file_meta)){
@@ -224,7 +222,6 @@ bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
             return true;
         }
     }
-
     res.set_status(201);
     return true;
 }

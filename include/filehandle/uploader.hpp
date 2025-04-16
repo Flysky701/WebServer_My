@@ -14,13 +14,15 @@
 
 namespace fs = std::filesystem;
 static const std::string UPLOAD_RELATIVE_PATH = "/uploads";
+static const std::string UPLOAD_PERSISTENT_PATH = "/storage";
 static const std::string PROJECT_ROOT_PATH = "/root/work_File/Webserver";
 
 class UpLoader{
     public:
         static void Initialize(){
             fs::path upload_dir = fs::path(PROJECT_ROOT_PATH + UPLOAD_RELATIVE_PATH);
-            
+            fs::path storage_dir = fs::path(PROJECT_ROOT_PATH + UPLOAD_PERSISTENT_PATH);
+
             try{
                 if (!fs::exists(upload_dir)){
                     fs::create_directories(upload_dir);
@@ -30,9 +32,18 @@ class UpLoader{
                     fs::perms::owner_all |
                     fs::perms::group_read | fs::perms::group_write,
                     fs::perm_options::replace);
+
+                if (!fs::exists(storage_dir)){
+                    fs::create_directories(storage_dir);
+                    LOG_INFO("创建储存目录: {}", storage_dir.string());
+                }
+                fs::permissions(storage_dir,
+                    fs::perms::owner_all |
+                    fs::perms::group_read | fs::perms::group_write,
+                    fs::perm_options::replace);
             }
             catch (const std::exception &e){
-                LOG_ERROR("创建上传目录失败: {}", e.what());
+                LOG_ERROR("创建上传/储存目录失败: {}", e.what());
             }
         } 
         static std::string generate_temp_path() {
@@ -48,72 +59,41 @@ class UpLoader{
             for (auto &c : filename) c = chars[dis(gen)];
             return  PROJECT_ROOT_PATH + UPLOAD_RELATIVE_PATH +  "/upload_" + filename;
         }
-
-        // static bool UploadHandle(const std::string &save_path, HttpRequest &req, HttpResponse &res){
-        //     FileRall file_fd(open(save_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644));
-        //     if (file_fd.GetFd() < 0){
-        //         LOG_ERROR("创建文件失败： {}", strerror(errno));
-        //         res.set_status(500);
-        //         return false;
-        //     }
-        //     const std::string &file_data = req.body();
-
-        //     bool check = AutoWriteData(file_fd, file_data);
-
-        //     if(!check){
-        //         res.set_status(500);
-        //         return false;
-        //     }
-        //     res.set_status(201);
-        //     return true;
-        // }
-
-    private:
-        class FileRall{
-            public:
-                explicit FileRall(int fd): fd_(fd) {};
-                ~FileRall(){ if(fd_ >= 0) close(fd_); }
-                int GetFd() { return fd_; };
-            private:
-                int fd_;
-        };
-
-        static bool AutoWriteData(FileRall &file, const std::string &data){
-            if (data.size() > 1024 * 1024)
-                return MmpWrite(file, data);
-            else
-                return StreamWrite(file, data);
-        }
-
-        static bool StreamWrite(FileRall &file, const std::string &data){
-            ssize_t total = 0;
-            const char *buffer = data.data();
-            size_t remaining = data.size();
-
-            while(remaining > 0){
-                ssize_t written = write(file.GetFd(), buffer + total, remaining);
-                if(written < 0){
-                    if(errno == EAGAIN)
-                        continue;
-                    LOG_ERROR("");
-                    return false;
-                }
-                total += written;
-                remaining -= written;
+        static std::string generate_user_path(const int user_id, const std::string filename){
+            fs::path save_dir = fs::path(PROJECT_ROOT_PATH + UPLOAD_PERSISTENT_PATH + ("user_" + std::to_string(user_id)));
+            if(!fs::exists(save_dir)){
+                fs::create_directories(save_dir);
             }
-            return false;
+            return (save_dir / filename).string();
         }
-        static bool MmpWrite(FileRall &file, const std::string &data){
-            if(ftruncate(file.GetFd(), data.size()) < 0)
+        // 目前来说，已经将上传文件存到了 -> temp_path
+        // 接下来， 将temp_path 下面的文件转存到固定user下的文件夹 storge/{username}/(files)
+        // 返回成功
+        static bool StreamUpload(const std::string &temp_path, const std::string &save_path){
+            try{
+                fs::copy(temp_path, save_path, 
+                    fs::copy_options::overwrite_existing);
+                LOG_DEBUG("文件转存成功: {} => {}", temp_path, save_path);
+                return true;
+            }catch (std::exception &e){
+                LOG_ERROR("上传发生错误{}", e.what());
+                return false;
+            }
+        }
+        static bool MmpUpload(const std::string &temp_path, const std::string &save_path){
+            constexpr size_t BUFFER_SIZE = 4 * 1024 * 1024;
+            std::ifstream src(temp_path, std::ios::binary);
+            std::ofstream dst(save_path, std::ios::binary);
+
+            if (!src || !dst)
                 return false;
 
-            void *map = mmap(nullptr, data.size(), PROT_WRITE, MAP_SHARED, file.GetFd(), 0);
-
-            if(map == MAP_FAILED)
-                return false;
-            
-            memcpy(map, data.data(), data.size());
-            munmap(map, data.size());
+            std::vector<char> buffer(BUFFER_SIZE);
+            while (src){
+                src.read(buffer.data(), buffer.size());
+                dst.write(buffer.data(), src.gcount());
+            }
             return true;
         }
+        private:
 };
