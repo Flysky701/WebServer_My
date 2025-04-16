@@ -3,3 +3,4 @@
 .vscode/c_cpp_properties.json
 test_cases.lua
 /uploads
+/storage
