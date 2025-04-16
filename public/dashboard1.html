@@ -330,6 +330,7 @@
                 }
 
                 alert('上传成功');
+                await loadUserInfo();
                 await loadFiles();
             } catch (err) {
                 console.error('上传失败:', err);
@@ -398,6 +399,8 @@
                 if (!res.ok) throw new Error(res.statusText);
 
                 alert('删除成功');
+                // 重新加载用户信息和文件列表
+                await loadUserInfo();
                 await loadFiles();
             } catch (err) {
                 console.error('删除失败:', err);

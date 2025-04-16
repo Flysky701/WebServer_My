@@ -13,7 +13,9 @@ struct FileMeta{
     std::string creatat;
     bool is_del = false;
 };
-
+// 整体应添加延迟删除机制， 暂缓删除
+// 1. 先将文件标记为删除
+// 2. 过一段时间后， 再删除文件，删除数据库记
 class FileDao
 {
     public:
@@ -133,6 +135,7 @@ std::vector<FileMeta> FileDao::ListFilesByUser(int user_id, int limit){
     }
     return files_;
 }
+// 暂未使用
 std::shared_ptr<FileMeta> FileDao::GetFileById(int file_id, int user_id){
     SqlGuard conn(pool_);
 

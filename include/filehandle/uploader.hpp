@@ -68,7 +68,6 @@ class UpLoader{
         }
         // 目前来说，已经将上传文件存到了 -> temp_path
         // 接下来， 将temp_path 下面的文件转存到固定user下的文件夹 storge/{username}/(files)
-        // 返回成功
         static bool StreamUpload(const std::string &temp_path, const std::string &save_path){
             try{
                 fs::copy(temp_path, save_path, 
@@ -80,6 +79,7 @@ class UpLoader{
                 return false;
             }
         }
+        // 这一部分还没有验证 （内存复制）
         static bool MmpUpload(const std::string &temp_path, const std::string &save_path){
             constexpr size_t BUFFER_SIZE = 4 * 1024 * 1024;
             std::ifstream src(temp_path, std::ios::binary);
