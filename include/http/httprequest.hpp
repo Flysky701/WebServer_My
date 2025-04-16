@@ -187,13 +187,13 @@ bool HttpRequest::parse(const char *data, size_t len)
     std::string_view input(data, len);
     size_t pos = 0;
 
-    // LOG_DEBUG("展示接受数据: \n {}", input);
+    LOG_DEBUG("展示接受数据: \n {}", input);
 
     while (pos < input.size() && state_ != PARSE_ERROR && state_ != PARSE_COMPLETE){
         string_view line;
         if (state_ == PARSE_BODY){
             line = input.substr(pos);
-            LOG_DEBUG("show:{}", line);
+            // LOG_DEBUG("show:{}", line);
         }
         else{
             size_t line_end = input.find("\r\n", pos);
@@ -218,7 +218,8 @@ bool HttpRequest::parse(const char *data, size_t len)
         case PARSE_HEADERS:
             if (line.empty())
             {
-                if (method_ == "POST" || method_ == "PUT"){
+                if (method_ == "POST" || method_ == "PUT" || method_ == "DELETE")
+                {
                     state_ = PARSE_BODY;
                 }
                 else
@@ -323,6 +324,12 @@ void HttpRequest::parse_body(string_view line)
             string boundary = content_type.substr(boundary_pos + 9);
             parse_multipart_form(boundary);
         }
+        // json 引入json库？我不行了
+        if(content_type.find("application/json") != string::npos){
+            // 解析json
+            // TODO
+        }
+        
     }
 }
 

@@ -409,6 +409,10 @@ void Server::Routes_Init(){
     route_.add_token_Validate("/api/upload", "POST");
     route_.add_route("/api/upload", "POST", [this](const HttpRequest &req, HttpResponse &res)
                      { fileHandler_.handle_upload(req, res); });
+    
+    route_.add_token_Validate("/api/files", "DELETE");
+    route_.add_route("/api/files", "DELETE", [this](const HttpRequest &req, HttpResponse &res)
+                     { fileHandler_.handle_delfile(req, res); });
 
     route_.add_token_Validate("/dashboard1.html", "GET");
 

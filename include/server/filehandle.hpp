@@ -169,6 +169,22 @@ bool FileHandler::handle_fileinfo(const HttpRequest &req, HttpResponse &res){
 bool FileHandler::handle_delfile(const HttpRequest &req, HttpResponse &res){
     if(req.method() != "POST")
         return false;
+    int user_id = 0;
+    try{
+        string key = "user_id";
+        user_id = std::stoi(req.get_context(key));
+    }catch (const std::exception &e){
+        LOG_ERROR("获取用户ID失败: {}", std::string(e.what()));
+        res.set_status(403);
+        return true;
+    }
+    // 从 req 获取文件ID
+    auto query_params = req.query_params(); // 大概是这个？
+    for(auto [key, value] : query_params){
+        LOG_DEBUG("key: {}, value: {}", key, value);
+    }
+
+    return false;
 }
 
 // 下方未测试 
