@@ -31,9 +31,8 @@ class FileDao
 bool FileDao::CreatFile(const FileMeta &meta){
     SqlGuard conn(pool_);
     conn->setAutoCommit(false);
-
+    
     try{
-
         auto update_user = conn->prepareStatement(
             "UPDATE users SET used_quota = used_quota + ? "
             "WHERE id = ? AND (total_quota - used_quota) >= ?");
@@ -118,17 +117,17 @@ std::vector<FileMeta> FileDao::ListFilesByUser(int user_id, int limit){
         std::unique_ptr<sql::ResultSet> res(stmt->executeQuery());
         while(res -> next()){
             FileMeta tmp;
+            tmp.user_id = user_id;
             tmp.id = res->getInt("id");
-            tmp.user_id = res->getInt("user_id");
             tmp.file_size = res->getUInt64("file_size");
             tmp.file_path = res->getString("file_path");
             tmp.creatat = res->getString("created_at");
             tmp.file_name = res->getString("filename");
+            
             files_.push_back(tmp);
         }
     }
-    catch (sql::SQLException &e)
-    {
+    catch (sql::SQLException &e){
         LOG_ERROR("查询用户文件列表失败：" + std::string(e.what()));
         throw;
     }

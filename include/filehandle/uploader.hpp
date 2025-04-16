@@ -60,7 +60,7 @@ class UpLoader{
             return  PROJECT_ROOT_PATH + UPLOAD_RELATIVE_PATH +  "/upload_" + filename;
         }
         static std::string generate_user_path(const int user_id, const std::string filename){
-            fs::path save_dir = fs::path(PROJECT_ROOT_PATH + UPLOAD_PERSISTENT_PATH + ("user_" + std::to_string(user_id)));
+            fs::path save_dir = fs::path(PROJECT_ROOT_PATH + UPLOAD_PERSISTENT_PATH + ("/user_" + std::to_string(user_id)));
             if(!fs::exists(save_dir)){
                 fs::create_directories(save_dir);
             }
