@@ -3,6 +3,7 @@
 #include <string>
 #include <filesystem>
 #include <fstream>
+#include <nlohmann/json.hpp>
 
 #include "httprequest.hpp"
 #include "httpresponse.hpp"
@@ -15,20 +16,22 @@
 
 #include "log.h"
 
+using json = nlohmann::json;
+
 class FileHandler
 {
     public:
         explicit FileHandler(const std::string &base_dir, UserDao &user_dao, FileDao &file_dao)
             : base_dir_(base_dir), file_dao_(file_dao), user_dao_(user_dao){}
 
-        // bool handle_request(const HttpRequest &req, HttpResponse &res, Connection &conn);
         bool static_handle(const HttpRequest &req, HttpResponse &res);
         bool handle_userinfo(const HttpRequest &req, HttpResponse &res);
         bool handle_fileinfo(const HttpRequest &req, HttpResponse &res);
         bool handle_upload(const HttpRequest &req, HttpResponse &res);
-        bool handle_download(const HttpRequest &req, HttpResponse &res, int fd);
         bool handle_delfile(const HttpRequest &req, HttpResponse &res);
-
+        
+        bool handle_download(const HttpRequest &req, HttpResponse &res, int fd);
+    
     private:
         std::string base_dir_;
         UserDao &user_dao_;
@@ -143,6 +146,8 @@ bool FileHandler::handle_fileinfo(const HttpRequest &req, HttpResponse &res){
     }
 
     auto files = file_dao_.ListFilesByUser(user_id);
+
+
     
     std::string json_body = "[";
     for (auto& fileinfo_ : files) {
@@ -156,18 +161,27 @@ bool FileHandler::handle_fileinfo(const HttpRequest &req, HttpResponse &res){
             json_body += ",";
         }
     }
-    json_body += "]";
-    std::string json = R"({
-        "code": 200,
-        "data": )" + json_body + R"(})";
-    
-    res.set_json_content(json)
+    json files_array = json::array();
+    for (auto &fileinfo_ : files){
+        files_array.push_back({
+            {"file_id", fileinfo_.id},
+            {"filename", fileinfo_.file_name},
+            {"filesize", fileinfo_.file_size},
+            {"created_at", fileinfo_.creatat}
+        });
+    }
+    json response = {
+        {"code", 200},
+        {"data", files_array}        
+    };
+
+    res.set_json_content(response.dump())
         .set_status(200);
     return true;
 }
 
 bool FileHandler::handle_delfile(const HttpRequest &req, HttpResponse &res){
-    if(req.method() != "POST")
+    if(req.method() != "DELETE")
         return false;
     int user_id = 0;
     try{
@@ -179,21 +193,52 @@ bool FileHandler::handle_delfile(const HttpRequest &req, HttpResponse &res){
         return true;
     }
     // 从 req 获取文件ID
-    auto query_params = req.query_params(); // 大概是这个？
-    for(auto [key, value] : query_params){
-        LOG_DEBUG("key: {}, value: {}", key, value);
-    }
+    try{
+        auto json_data_ = req.json_data(); // 大概是这个？
+        if(!json_data_.contains("files") || !json_data_["files"].is_array()){
+            LOG_ERROR("无效的json格式");
+            res.set_status(400)
+                .set_content(R"({"error": "Invalid request format"})", 
+                    "application/json");
+            return true;
+        }
 
+        std::vector<int> file_ids;
+        for(const auto &id : json_data_["files"])
+            file_ids.push_back(id.get<int>());
+        int del_count = 0;
+        for (auto id : file_ids){
+            if(file_dao_.DeleteFile(id, user_id))
+                del_count++;
+        }
+
+        json response = {
+            {"code", 200},
+            {"message", "成功删除" + std::to_string(del_count) + "个文件"}
+        };
+
+        res.set_status(200)
+            .set_json_content(response.dump());
+    }
+    catch (const json::parse_error &e)
+    {
+        LOG_ERROR("JSON解析失败: {}", e.what());
+        res.set_status(400).set_content(R"({"error": "Invalid JSON"})", "application/json");
+    }
+    catch (const std::exception &e)
+    {
+        LOG_ERROR("文件删除失败: {}", e.what());
+        res.set_status(500).set_content(R"({"error": "Internal server error"})", "application/json");
+    }
     return false;
 }
 
-// 下方未测试 
-// 下面需要重写
+
 bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
     // 上传逻辑 -> 
     if(req.method() != "POST")
-        return false;
-
+    return false;
+    
     int user_id = 0;
     try{
         string key = "user_id";
@@ -205,34 +250,34 @@ bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
     }
     
     auto files = req.uploaded_files();
-
+    
     for(auto file: files){
         auto filename = file.second.filename;
         auto temp_path = file.second.temp_path;
         auto file_size = file.second.size;
-
+        
         // 生成文件路径
         std::string save_path = UpLoader::generate_user_path(user_id, filename);
         LOG_DEBUG("文件转存路径:{} —> {} ", temp_path, save_path);
-
+        
         // 保存文件 // 50mb
         bool success = false;
         if (file_size < 50 * 1024 * 1024)
-            success = UpLoader::StreamUpload(temp_path, save_path);
+        success = UpLoader::StreamUpload(temp_path, save_path);
         else
-            success = UpLoader::MmpUpload(temp_path, save_path);
-
+        success = UpLoader::MmpUpload(temp_path, save_path);
+        
         // 插入数据库
         if(!success){
             res.set_status(500)
-                .set_content("文件保存失败");
+            .set_content("文件保存失败");
         }
         FileMeta file_meta;
         file_meta.user_id = user_id;
         file_meta.file_name = filename;
         file_meta.file_size = file_size;
         file_meta.file_path = save_path;
-
+        
         if(!file_dao_.CreatFile(file_meta)){
             res.set_status(500);
             return true;
@@ -241,7 +286,8 @@ bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
     res.set_status(201);
     return true;
 }
-
+// 下方未测试 
+// 下面需要重写
 bool FileHandler::handle_download(const HttpRequest &req, HttpResponse &res, int sent_fd){
     
     if (req.method() != "GET" && req.method() != "HEAD")

@@ -7,9 +7,12 @@
 #include <algorithm>
 #include <sstream>
 #include <random>
+#include <nlohmann/json.hpp>
 
 #include "uploader.hpp"
 #include "log.h"
+
+using json = nlohmann::json;
 
 class HttpRequest
 {
@@ -30,8 +33,8 @@ public:
     const std::string &path() const { return path_; }
     const std::string &version() const { return version_; }
     const std::string &body() const { return body_; }
+    const json &json_data() const { return json_data_ ;};
     const ParseState &state() const { return state_; }
-
 
     struct FileInfo
     {
@@ -69,29 +72,34 @@ public:
 private:
     // state
     ParseState state_ = PARSE_LINE;
-
+    // orgin data
     std::string method_;
     std::string path_;
     std::string version_;
     std::string body_;
-
+    // file_info
     std::string current_field_name_;
     std::string current_filename_;
-
+    // params_header
     std::unordered_map<std::string, std::string> headers_;
-    std::unordered_map<std::string, std::string> context_;
-    std::unordered_map<std::string, UploadFile> uploaded_files_;
-    static const std::unordered_map<std::string, std::string> MIME_TYPES;
-    
     std::unordered_map<std::string, std::string> query_params_;
+    std::unordered_map<std::string, std::string> context_;
+    static const std::unordered_map<std::string, std::string> MIME_TYPES;
+    // params_body_
+    std::unordered_map<std::string, UploadFile> uploaded_files_;
     std::unordered_map<std::string, std::string> form_params_;
+    json json_data_;
 
     bool parse_request_line(std::string_view line);
     void parse_headers(std::string_view line);
     void parse_body(std::string_view line);
+    
+    // BODY-FILE
     void parse_multipart_form(const std::string &boundary);
     void process_part_headers(std::string_view headers);
     void handle_part_content(size_t start, size_t length);
+    // BODY-JSON
+    void parse_json_form();
 
     static std::string url_decode(std::string_view str);
 
@@ -233,15 +241,14 @@ bool HttpRequest::parse(const char *data, size_t len)
             size_t content_length = 0;
             content_length = std::stoul(headers_.at("content-length"));
 
-            // 完整读取 body 数据
+            // 读取 body 数据
             size_t needed = content_length - body_.size();
             size_t take = std::min(needed, input.size() - pos);
             body_.append(input.substr(pos, take));
             pos += take;
             LOG_DEBUG("展示body大小: {}", body_.size());
 
-            if (body_.size() >= content_length)
-            {
+            if (body_.size() >= content_length){
                 parse_body(body_);
                 state_ = PARSE_COMPLETE;
             }
@@ -308,10 +315,8 @@ void HttpRequest::parse_headers(string_view line)
     headers_[key] = value;
 }
 
-void HttpRequest::parse_body(string_view line)
-{
+void HttpRequest::parse_body(string_view line){
     // LOG_DEBUG("parse_body函数");
-    body_ = line;
     if (headers_.count("content-type")){
         auto &content_type = headers_.at("content-type");
         // 表单
@@ -324,13 +329,22 @@ void HttpRequest::parse_body(string_view line)
             string boundary = content_type.substr(boundary_pos + 9);
             parse_multipart_form(boundary);
         }
-        // json 引入json库？我不行了
+        // json 引入json库
         if(content_type.find("application/json") != string::npos){
-            // 解析json
-            // TODO
+            parse_json_form();
         }
-        
     }
+}
+void HttpRequest::parse_json_form(){
+    // data -> body_;
+    try{
+        if(body_.size() > 10 * 1024 * 1024)
+                LOG_WARN("JSON数据过大");
+        json_data_ = json::parse(body_);
+    }catch(const json::exception& e){
+        LOG_ERROR("JSON错误[{}]: {}", e.id, e.what());
+    }
+
 }
 
 void HttpRequest::parse_multipart_form(const std::string &boundary)
