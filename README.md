@@ -1,6 +1,11 @@
 # Fileserver 项目
 **开发笔记** | 最后更新：2025.4.58
 
+## TODO
++ 实现filehandler::DOWNLOAD
++ 实现filehandler::DELETE
++ 实现懒标记删除临时文件和标记删除文件
+
 ## 待完成
 
 ### 文件模块
