@@ -30,7 +30,7 @@ class FileHandler
         bool handle_upload(const HttpRequest &req, HttpResponse &res);
         bool handle_delfile(const HttpRequest &req, HttpResponse &res);
         
-        bool handle_download(const HttpRequest &req, HttpResponse &res, int fd);
+        bool handle_download(const HttpRequest &req, HttpResponse &res);
     
     private:
         std::string base_dir_;
@@ -46,6 +46,19 @@ class FileHandler
         bool is_safe_path(const std::string &path) { 
             return path.find("..") == std::string::npos; 
         }
+
+        int get_user_id(const HttpRequest &req){
+            int user_id = 0;
+            try{
+                string key = "user_id";
+                user_id = std::stoi(req.get_context(key));
+            }
+            catch (const std::exception &e){
+                LOG_ERROR("获取用户ID失败: {}", std::string(e.what()));
+            }
+            return user_id;
+        }
+        // std::vector<int> get_file_id()
 
         bool ensure_directory_exists(const std::string &path){
             try{
@@ -104,16 +117,11 @@ bool FileHandler::handle_userinfo(const HttpRequest &req, HttpResponse &res){
     if(req.method() != "GET")
         return false;
 
-    int user_id = 0;
-    try{
-        string key = "user_id";
-        user_id = std::stoi(req.get_context(key));
-    }catch (const std::exception &e){
-        LOG_ERROR("获取用户ID失败: {}", std::string(e.what()));
+    int user_id = get_user_id(req);
+    if(user_id == 0){
         res.set_status(403);
-        return true;
     }
-    
+
     string username = user_dao_.username(user_id);
     auto msg = user_dao_.usedInfo(user_id);
 
@@ -135,14 +143,10 @@ bool FileHandler::handle_fileinfo(const HttpRequest &req, HttpResponse &res){
     if(req.method() != "GET")
         return false;
 
-    int user_id = 0;
-    try{
-        string key = "user_id";
-        user_id = std::stoi(req.get_context(key));
-    }catch (const std::exception &e){
-        LOG_ERROR("获取用户ID失败: {}", std::string(e.what()));
+    int user_id = get_user_id(req);
+    if (user_id == 0)
+    {
         res.set_status(403);
-        return true;
     }
 
     auto files = file_dao_.ListFilesByUser(user_id);
@@ -183,14 +187,10 @@ bool FileHandler::handle_fileinfo(const HttpRequest &req, HttpResponse &res){
 bool FileHandler::handle_delfile(const HttpRequest &req, HttpResponse &res){
     if(req.method() != "DELETE")
         return false;
-    int user_id = 0;
-    try{
-        string key = "user_id";
-        user_id = std::stoi(req.get_context(key));
-    }catch (const std::exception &e){
-        LOG_ERROR("获取用户ID失败: {}", std::string(e.what()));
+    
+        int user_id = get_user_id(req);
+    if (user_id == 0){
         res.set_status(403);
-        return true;
     }
     // 从 req 获取文件ID
     try{
@@ -207,6 +207,8 @@ bool FileHandler::handle_delfile(const HttpRequest &req, HttpResponse &res){
         for(const auto &id : json_data_["files"])
             file_ids.push_back(id.get<int>());
         int del_count = 0;
+
+        // 也许会在这里加入 懒标记
         for (auto id : file_ids){
             if(file_dao_.DeleteFile(id, user_id))
                 del_count++;
@@ -219,6 +221,7 @@ bool FileHandler::handle_delfile(const HttpRequest &req, HttpResponse &res){
 
         res.set_status(200)
             .set_json_content(response.dump());
+        return true;
     }
     catch (const json::parse_error &e)
     {
@@ -230,7 +233,7 @@ bool FileHandler::handle_delfile(const HttpRequest &req, HttpResponse &res){
         LOG_ERROR("文件删除失败: {}", e.what());
         res.set_status(500).set_content(R"({"error": "Internal server error"})", "application/json");
     }
-    return false;
+    return true;
 }
 
 
@@ -288,34 +291,74 @@ bool FileHandler::handle_upload(const HttpRequest &req, HttpResponse &res){
 }
 // 下方未测试 
 // 下面需要重写
-bool FileHandler::handle_download(const HttpRequest &req, HttpResponse &res, int sent_fd){
-    
-    if (req.method() != "GET" && req.method() != "HEAD")
+bool FileHandler::handle_download(const HttpRequest &req, HttpResponse &res){
+    if(req.method() != "POST")
         return false;
-
-    std::string path = resolve_path(req.path());
-
-    if (!is_safe_path(path)){
+    int sent_fd = std::stoi(req.get_context("connection_fd"));
+    LOG_DEBUG("sent_fd {}", sent_fd);
+    int user_id = get_user_id(req);
+    if (user_id == 0){
         res.set_status(403);
         return true;
     }
-    std::string full_path = base_dir_ + path;
-    LOG_DEBUG("尝试访问文件路径: " + full_path);
 
-    if (!ensure_directory_exists(full_path)){
-        res.set_status(500);
+    try{
+        auto json_data_ = req.json_data(); // 大概是这个？
+        if (!json_data_.contains("files") || !json_data_["files"].is_array())
+        {
+            LOG_ERROR("无效的json格式");
+            res.set_status(400)
+                .set_content(R"({"error": "Invalid request format"})",
+                             "application/json");
+            return true;
+        }
+
+        const auto &files = json_data_["files"];
+
+        // 仅允许单个文件下载
+        if (files.size() != 1)
+        {
+            LOG_ERROR("仅支持单个文件下载");
+            res.set_status(400)
+                .set_content(R"({"error": "Only single file download supported"})", "application/json");
+            return true;
+        }
+
+        // 获取文件ID
+        int file_id = files[0].get<int>();
+
+        // 查询文件元数据
+        auto file_info = file_dao_.GetFileById(file_id, user_id);
+        if (!file_info){ // 假设返回nullptr表示文件不存在或无权访问
+            LOG_ERROR("文件不存在或无权访问: {}", file_id);
+            res.set_status(404)
+                .set_content(R"({"error": "File not found or access denied"})", "application/json");
+            return true;
+        }
+
+        LOG_DEBUG("下载文件数据处理完成");
+
+        // 调用下载处理器
+        if (!DownLoader::HandleDownload(file_info->file_path, res))
+        {
+            LOG_ERROR("文件下载失败: {}", file_info->file_path);
+            res.set_status(500)
+                .set_content(R"({"error": "File transfer failed"})", "application/json");
+            return true;
+        }
+        LOG_DEBUG("文件下载成功");
+        // 若SendFile成功，HTTP状态码默认为200
         return true;
     }
-
-    if(!DownLoader::HandleDownload(full_path, res, sent_fd)){
-        res.set_status(500);
-        return true;
+    catch (const json::parse_error &e)
+    {
+        LOG_ERROR("JSON解析失败: {}", e.what());
+        res.set_status(400).set_content(R"({"error": "Invalid JSON"})", "application/json");
     }
-
-    if (req.method() == "HEAD"){
-        res.set_content("");
+    catch (const std::exception &e)
+    {
+        LOG_ERROR("文件下载失败: {}", e.what());
+        res.set_status(500).set_content(R"({"error": "Internal server error"})", "application/json");
     }
-    res.set_status(200);
-    return true;
+    return false;
 }
-

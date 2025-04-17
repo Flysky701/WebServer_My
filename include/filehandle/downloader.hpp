@@ -13,15 +13,16 @@
 
 class DownLoader{
     public:
-        static bool HandleDownload(const std::string &path, HttpResponse &res, int sent_fd){
-            FileRall file_fd(open(path.c_str(), O_RDONLY));
-            if(file_fd.GetFd() < 0){
+        static bool HandleDownload(const std::string &path, HttpResponse &res){
+            int file_fd(open(path.c_str(), O_RDONLY));
+            if(file_fd < 0){
                 LOG_ERROR("打开文件失败: {} - {}", path, strerror(errno));
                 return false;
             }
 
             struct stat file_stat;
-            if (fstat(file_fd.GetFd(), &file_stat) < 0){
+            if (fstat(file_fd, &file_stat) < 0){
+                close(file_fd);
                 LOG_ERROR("获取文件状态失败: {} - {}", path, strerror(errno));
                 return false;
             }
@@ -29,9 +30,9 @@ class DownLoader{
             res.set_header("Content-Length", std::to_string(file_stat.st_size))
                 .set_header("Content-Type", "application/octet-stream")
                 .set_keep_alive(true);
-            LOG_DEBUG("传输数据(Downloader)");
-
-            return SendFile(sent_fd, file_fd.GetFd(), file_stat.st_size);
+            
+            res.SetFile(file_fd, file_stat.st_size);
+            return true;
         }
     private:
         class FileRall{
@@ -48,8 +49,7 @@ class DownLoader{
             ssize_t sent = 0;
             size_t remaining = file_size;
 
-            while (remaining > 0)
-            {
+            while (remaining > 0){
                 sent = sendfile(sock_fd, file_fd, &offset, remaining);
 
                 if(sent <= 0){

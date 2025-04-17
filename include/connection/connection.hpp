@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <system_error>
 #include <unistd.h>
+#include <sys/sendfile.h>
 
 #include "log.h"
 
@@ -20,8 +21,9 @@ class Connection{
         bool ReadData();                         // 从socket读取数据
         bool WriteData(const std::string &data); // 写入数据到缓冲区
         bool Flush();
-        void ClearReadBuffer(){r_buffer.clear();};
-        
+        bool SendFileData();
+        void ClearReadBuffer() { r_buffer.clear(); };
+
         std::vector<char> GetReadBuffer() { 
             std::lock_guard<std::mutex> lock(r_mtx_);
             return r_buffer; 
@@ -30,11 +32,21 @@ class Connection{
         int GetFd() const {return fd_;}
         
         bool HasPendingWrite() const { return !w_buffer.empty();}
+
+        void SetFileToSend(int fd, size_t size){ 
+            file_fd_ = fd, file_size_ = size, file_sent_ = 0;
+        }
+
     private:
     
         int fd_;
         std::vector<char> r_buffer;
         std::string w_buffer;
+
+        int file_fd_ = -1;     // 待发送的文件描述符
+        size_t file_size_ = 0; // 文件总大小
+        size_t file_sent_ = 0; // 已发送字节数
+
         std::mutex r_mtx_;
         std::mutex w_mtx_;
         
@@ -102,6 +114,30 @@ bool Connection::WriteData(const std::string& data){
         return false;
     }
 }
+bool Connection::SendFileData(){
+    if(file_fd_ == -1)return true;
+    off_t offset = file_sent_;
+    ssize_t sent = sendfile(fd_, file_fd_, &offset, file_size_ - file_sent_);
+
+    if (sent < 0){
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        {
+            return false; // 需要下次继续发送
+        }
+        close(file_fd_);
+        file_fd_ = -1;
+        return false; // 发送失败
+    }
+    else if (sent == 0 || file_sent_ + sent >= file_size_){
+        close(file_fd_);
+        file_fd_ = -1;
+        return true; // 发送完成
+    }
+
+    file_sent_ += sent;
+    return false; // 还有剩余数据
+}
+// 普通发送
 bool Connection::Flush()
 {
     if (w_buffer.empty())

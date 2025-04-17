@@ -16,6 +16,10 @@ class HttpResponse{
         HttpResponse &set_keep_alive(bool keep_alive);
         std::string serialize() const;
 
+        void SetFile(int fd, size_t size){file_fd_ = fd, file_size_ = size;};
+        bool HasFile() const { return file_fd_ != -1; };
+        int GetFileFd() const { return file_fd_; };
+        size_t GetFileSize() const { return file_size_; };
 
     private:
         int status_code_;
@@ -23,6 +27,10 @@ class HttpResponse{
         std::unordered_map<std::string, std::string> headers_;
         std::string content_;
         bool keep_alive_;
+
+        int file_fd_ = -1;
+        size_t file_size_ = 0;
+
         static std::string default_reason(const int code){
             static const std::unordered_map<int, std::string> reasons = {
                 {200, "OK"}, {201, "Created"}, {204, "No Content"}, 

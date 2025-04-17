@@ -11,11 +11,10 @@
 #include "httpresponse.hpp"  
 #include "httprequest.hpp"
 #include "log.h"
-
 namespace fs = std::filesystem;
 static const std::string UPLOAD_RELATIVE_PATH = "/uploads";
 static const std::string UPLOAD_PERSISTENT_PATH = "/storage";
-static const std::string PROJECT_ROOT_PATH = "/root/work_File/Webserver";
+static const std::string PROJECT_ROOT_PATH = "/root/Learning_project/Webserver_My";
 
 class UpLoader{
     public:

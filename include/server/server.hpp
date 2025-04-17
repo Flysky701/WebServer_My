@@ -288,8 +288,7 @@ void Server::HandleEvent(epoll_event &event)
         {
             std::lock_guard<std::mutex> lock(epoll_mtx);
             timer_.Add(fd, CONN_TIMEOUT);
-            if (!conn->HasPendingWrite())
-            {
+            if (!conn->HasPendingWrite() || conn -> SendFileData()){
                 M_epoll_.ModifyFd(fd, EPOLLIN | EPOLLET);
             }
         }
@@ -305,15 +304,11 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
         bool request_handled = false;
         const auto &buffer = conn->GetReadBuffer();
 
-        LOG_INFO("conn->GetReadBuffer() is OK");
-        LOG_INFO("Buffer size = {}", buffer.size());
-        // LOG_DEBUG("show buffer:{}", buffer.data());
-
         if (req.parse(buffer))
         {
-            LOG_INFO("req.parse(buffer) is OK");
             conn->ClearReadBuffer();
             LOG_DEBUG("{}, {}, {}", req.method(), req.path(), req.version());
+            req.set_context("connection_fd", std::to_string(conn -> GetFd()));
             try
             {
                 
@@ -346,10 +341,28 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
                 conn->WriteData(resp_str);
             }
             // 提交Flush及事件修改到主线程
+            if(res.HasFile())
+            {
+                int file_fd = res.GetFileFd();
+                size_t file_size = res.GetFileSize();
+                conn->SetFileToSend(file_fd, file_size);
+                {
+                    std::lock_guard<std::mutex> t_lock(task_mtx);
+                    pending_tasks.push([this, fd = conn->GetFd()]()
+                    {
+                    if (!Conns_.count(fd)) return;
+                    auto conn = Conns_[fd];
+                    std::lock_guard<std::mutex> e_lock(epoll_mtx);
+                    uint32_t events = EPOLLIN | EPOLLET;
+                    M_epoll_.ModifyFd(conn->GetFd(), events); 
+                    });
+                }
+            }
+            else 
             {
                 std::lock_guard<std::mutex> t_lock(task_mtx);
                 pending_tasks.push([this, fd = conn->GetFd()]()
-                                   {
+                {
                     if (!Conns_.count(fd)) return;
                     auto conn = Conns_[fd];
                     std::lock_guard<std::mutex> e_lock(epoll_mtx);
@@ -361,8 +374,10 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
                     if (conn->HasPendingWrite()) {
                         events |= EPOLLOUT;
                     }
-                    M_epoll_.ModifyFd(conn->GetFd(), events); });
+                    M_epoll_.ModifyFd(conn->GetFd(), events); 
+                });
             }
+
         }
     };
     pool_.enqueue(std::move(fun));
@@ -413,6 +428,10 @@ void Server::Routes_Init(){
     route_.add_token_Validate("/api/files", "DELETE");
     route_.add_route("/api/files", "DELETE", [this](const HttpRequest &req, HttpResponse &res)
                      { fileHandler_.handle_delfile(req, res); });
+    // POST /api/download HTTP/1.1
+    route_.add_token_Validate("/api/download", "POST");
+    route_.add_route("/api/download", "POST", [this](const HttpRequest &req, HttpResponse &res)
+                     { fileHandler_.handle_download(req, res); });
 
     route_.add_token_Validate("/dashboard1.html", "GET");
 
