@@ -60,8 +60,8 @@ public:
     const std::unordered_map<std::string, std::string> &query_params() const { return query_params_; };
     const std::unordered_map<std::string, std::string> &form_params() const { return form_params_; };
     const std::unordered_map<std::string, UploadFile> &uploaded_files() const { return uploaded_files_; };
-
-    void set_context(const std::string& key, const std::string& value){
+    void set_context(const std::string &key, const std::string &value)
+    {
         context_[key] = value;
     }
     std::string get_context(const std::string &key) const{
@@ -83,12 +83,13 @@ private:
     // params_header
     std::unordered_map<std::string, std::string> headers_;
     std::unordered_map<std::string, std::string> query_params_;
-    std::unordered_map<std::string, std::string> context_;
     static const std::unordered_map<std::string, std::string> MIME_TYPES;
     // params_body_
     std::unordered_map<std::string, UploadFile> uploaded_files_;
     std::unordered_map<std::string, std::string> form_params_;
     json json_data_;
+
+    std::unordered_map<std::string, std::string> context_;
 
     bool parse_request_line(std::string_view line);
     void parse_headers(std::string_view line);

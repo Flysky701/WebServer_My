@@ -72,8 +72,7 @@ void AuthHandler::handle_login(const HttpRequest &req, HttpResponse &res)
             build_error_response(res, 401, "Invalid credentials");
         }
     }
-    catch (const std::exception &e)
-    {
+    catch (const std::exception &e){
         LOG_ERROR("登录错误 ：" + std::string(e.what()));
         build_error_response(res, 500, "Internal server error");
     }

@@ -69,8 +69,7 @@ bool FileDao::CreatFile(const FileMeta &meta){
 bool FileDao::DeleteFile(int file_id, int user_id){
     SqlGuard conn(pool_);
     conn->setAutoCommit(false);
-    try
-    {
+    try{
         auto get_size = conn->prepareStatement(
             "SELECT file_size FROM files WHERE id = ? AND user_id = ?");
 
@@ -137,7 +136,7 @@ std::vector<FileMeta> FileDao::ListFilesByUser(int user_id, int limit){
     }
     return files_;
 }
-// 暂未使用
+
 std::shared_ptr<FileMeta> FileDao::GetFileById(int file_id, int user_id){
     SqlGuard conn(pool_);
 
@@ -149,7 +148,7 @@ std::shared_ptr<FileMeta> FileDao::GetFileById(int file_id, int user_id){
         stmt->setInt(1, file_id);
         stmt->setInt(2, user_id);
 
-        std::unique_ptr<sql::ResultSet> res;
+        std::unique_ptr<sql::ResultSet> res(stmt -> executeQuery());
         if(res -> next()){
             auto tmp = std::make_shared<FileMeta>();
             tmp -> id = res->getInt("id");
@@ -167,6 +166,7 @@ std::shared_ptr<FileMeta> FileDao::GetFileById(int file_id, int user_id){
         return nullptr;
     }
 }
+// 暂未使用
 bool FileDao::CheckOwnership(int file_id, int user_id){
     SqlGuard conn(pool_);
 
