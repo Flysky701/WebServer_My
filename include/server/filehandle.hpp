@@ -58,20 +58,23 @@ class FileHandler
             }
             return user_id;
         }
-        // std::vector<int> get_file_id()
 
-        bool ensure_directory_exists(const std::string &path){
-            try{
-                auto parent_dir = std::filesystem::path(path).parent_path();
-                if(!std::filesystem::exists(parent_dir))
-                    std::filesystem::create_directories(parent_dir);
-                    return true;
+        static std::string url_encode(std::string &data){
+            std::ostringstream escaped;
+            escaped.fill('0');
+            escaped << std::hex;
+
+            for (char c : data){
+                if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~'){
+                    escaped << c;
+                }
+                else{
+                    escaped << '%' << std::setw(2) << int(static_cast<unsigned char>(c));
+                }
             }
-            catch (const std::exception &e){
-                LOG_ERROR("创建目录失败：{}", std::string(e.what()));
-                return false;
-            }
+            return escaped.str();
         }
+        // std::vector<int> get_file_id()
 
         bool file_exists(const std::string &path){
             std::ifstream f(path);
@@ -335,6 +338,9 @@ bool FileHandler::handle_download(const HttpRequest &req, HttpResponse &res){
                 .set_content(R"({"error": "File not found or access denied"})", "application/json");
             return true;
         }
+        std::string encode_name = url_encode(file_info->file_name);
+        res.set_header("Content-Disposition",
+                       "attachment; filename=\"" + file_info->file_name + "\"; ""filename*=UTF-8''" + encode_name);
 
         LOG_DEBUG("下载文件数据处理完成");
 
