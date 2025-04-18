@@ -4,115 +4,489 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仪表盘</title>
+    <title>文件服务器仪表盘</title>
     <style>
-        /* 复用原有样式 */
-        .login-container {
-            background: white;
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --hover-color: #2980b9;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
             padding: 2rem;
+            background: #f5f6fa;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* 用户信息区域 */
+        .user-header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .username {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        /* 文件列表区域 */
+        .file-list {
+            background: white;
             border-radius: 12px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 1rem;
+        }
+
+        .file-table {
             width: 100%;
-            max-width: 800px;
-            /* 调大容器宽度 */
-            margin: 2rem auto;
+            border-collapse: collapse;
         }
 
-        .submit-btn {
-            width: auto;
-            /* 按钮自适应宽度 */
-            padding: 12px 24px;
-            background: #3498db;
-            color: white;
+        .file-table th,
+        .file-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .file-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        /* 操作面板 */
+        .action-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            height: fit-content;
+        }
+
+        .button-group {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 12px 20px;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: background 0.3s;
-            margin: 1rem 0;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
         }
 
-        /* 新增图片预览样式 */
-        .image-preview {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
-            max-width: 90%;
-            max-height: 90%;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        .btn-primary {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--hover-color);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        /* 存储空间指示器 */
+        .storage-meter {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f8f9fa;
             border-radius: 8px;
         }
 
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 999;
+        .progress-bar {
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
         }
 
-        /* 关闭按钮 */
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #e74c3c;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            cursor: pointer;
-            font-weight: bold;
+        .progress {
+            height: 100%;
+            background: var(--secondary-color);
+            width: 65%;
+            transition: width 0.3s ease;
         }
+
+        /* 拖放上传区域 */
+        .drop-zone {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            margin: 1rem 0;
+            transition: all 0.2s;
+        }
+
+        .drop-zone.active {
+            border-color: var(--secondary-color);
+            background: #f0f8ff;
+        }
+        .file-table tr.selected {
+            background: var(--secondary-color) !important;
+            color: rgb(255, 255, 255);
+        }   
     </style>
 </head>
 
 <body>
-    <div class="login-container">
-        <h2 class="form-title">仪表盘</h2>
+    <div class="dashboard-container">
+        <!-- 用户信息 -->
+        <div class="user-header">
+            <div class="username">正在加载用户信息...</div>
+            <div class="storage-meter">
+                <div>已用空间：<span class="storage-used">0 B</span> / <span class="storage-total">0 B</span></div>
+                <div class="progress-bar">
+                    <div class="progress"></div>
+                </div>
+            </div>
+        </div>
 
-        <!-- 图片查看按钮 -->
-        <button class="submit-btn" id="show-image-btn">查看示例图片</button>
+        <!-- 文件列表 -->
+        <main class="file-list">
+            <table class="file-table">
+                <thead>
+                    <tr>
+                        <th>文件名</th>
+                        <th>大小</th>
+                        <th>修改日期</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 动态加载文件列表 -->
+                    <tr class="loading-row">
+                        <td colspan="3" style="text-align: center">正在加载文件列表...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </main>
 
-        <!-- 图片预览层 -->
-        <div class="overlay" id="image-overlay"></div>
-        <img src="/images/example2.jpg" alt="示例图片" class="image-preview" id="preview-image">
-        <button class="close-btn" id="close-btn">×</button>
+        <!-- 操作面板 -->
+        <aside class="action-panel">
+            <div class="button-group">
+                <button class="btn btn-primary" id="upload-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12l7-7 7 7" />
+                    </svg>
+                    上传文件
+                </button>
+                <button class="btn btn-primary" id="download-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" />
+                    </svg>
+                    下载选中
+                </button>
+                <button class="btn btn-danger" id="delete-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                    删除选中
+                </button>
+            </div>
+
+            <!-- 拖放上传区域 -->
+            <div class="drop-zone" id="drop-zone">
+                拖放文件到此区域上传
+                <input type="file" id="file-input" hidden multiple>
+            </div>
+        </aside>
     </div>
 
     <script>
-        // 获取元素
-        const showBtn = document.getElementById('show-image-btn');
-        const overlay = document.getElementById('image-overlay');
-        const previewImage = document.getElementById('preview-image');
-        const closeBtn = document.getElementById('close-btn');
+        // 全局配置
+        const API_BASE = 'http://localhost:8080/api';
+        let currentUser = null;
 
-        // 显示图片
-        showBtn.addEventListener('click', () => {
-            previewImage.style.display = 'block';
-            overlay.style.display = 'block';
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // 1. 获取用户信息
+                await loadUserInfo();
+
+                // 2. 加载文件列表
+                await loadFiles();
+            } catch (err) {
+                showError('初始化失败，请刷新页面');
+            }
         });
 
-        // 关闭预览
-        function closePreview() {
-            previewImage.style.display = 'none';
-            overlay.style.display = 'none';
+        // 获取用户信息
+        async function loadUserInfo() {
+            try {
+                const res = await fetch(`${API_BASE}/user`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!res.ok) throw new Error(res.statusText);
+
+                const data = await res.json();
+                currentUser = data;
+
+                // 更新界面
+                document.querySelector('.username').textContent = `当前用户：${data.data.username}`;
+                document.querySelector('.storage-used').textContent = formatSize(data.data.storage_used);
+                document.querySelector('.storage-total').textContent = formatSize(data.data.storage_total);
+                document.querySelector('.progress').style.width =
+                    `${(data.data.storage_used / data.data.storage_total * 100).toFixed(1)}%`;
+            } catch (err) {
+                console.error('用户信息加载失败:', err);
+                throw err;
+            }
         }
 
-        // 绑定关闭事件
-        closeBtn.addEventListener('click', closePreview);
-        overlay.addEventListener('click', closePreview);
+        // 加载文件列表
+        async function loadFiles() {
+            const tbody = document.querySelector('.file-table tbody');
+            try {
+                // 显示加载状态
+                tbody.innerHTML = `<tr class="loading-row">
+                    <td colspan="3" style="text-align: center">正在加载文件列表...</td>
+                </tr>`;
 
-        // ESC键关闭
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closePreview();
+                const res = await fetch(`${API_BASE}/files`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!res.ok) throw new Error(res.statusText);
+
+            // 关键修改：解析完整响应结构
+                const result = await res.json();
+                const files = result.data; // 获取实际文件数组
+
+            // 判断空数据
+            if (!files || files.length === 0) {
+                tbody.innerHTML = `<tr class="empty-row">
+                    <td colspan="3" style="text-align: center">暂无文件，请上传文件</td>
+                </tr>`;
+                return;
+            }
+            // 生成文件列表（保持原逻辑）
+            tbody.innerHTML = files.map(file => `
+            <tr data-id="${file.file_id}">
+                <td>${file.filename}</td>
+                <td>${formatSize(file.filesize)}</td>
+                <td>${new Date(file.created_at).toLocaleString()}</td>
+            </tr>
+            `).join('');
+
+            // 绑定点击事件
+            document.querySelectorAll('.file-table tr[data-id]').forEach(row => {
+                row.addEventListener('click', function () {
+                    document.querySelectorAll('.file-table tr').forEach(r => r.classList.remove('selected'));
+                    // 添加当前行选中状态
+                    this.classList.add('selected');
+                    });
+                });
+            } catch (err) {
+            console.error('文件加载失败:', err);
+                tbody.innerHTML = `<tr class="error-row">
+                <td colspan="3" style="text-align: center; color: red">文件加载失败，请重试</td>
+                </tr>`;
+            }
+        }
+
+        // 文件上传处理
+        async function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const uploadBtn = document.getElementById('upload-btn');
+            try {
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = `上传中...`;
+
+                const formData = new FormData();
+                Array.from(files).forEach(file => {
+                    formData.append('files', file);
+                });
+
+                const res = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.message || '上传失败');
+                }
+
+                alert('上传成功');
+                await loadUserInfo();
+                await loadFiles();
+            } catch (err) {
+                console.error('上传失败:', err);
+                alert(`上传失败: ${err.message}`);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = `<svg...>上传文件</svg>`;
+            }
+        }
+
+        // 下载选中文件
+        document.getElementById('download-btn').addEventListener('click', async () => {
+            const selectedIds = getSelectedIds();
+            if (selectedIds.length === 0) return alert('请选择要下载的文件');
+
+            const downloadBtn = document.getElementById('download-btn');
+            try {
+                downloadBtn.disabled = true;
+                downloadBtn.textContent = '准备下载...';
+
+                const res = await fetch(`${API_BASE}/download`, {
+                    method: 'POST',
+                    headers: {
+                        ...getAuthHeader(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ files: selectedIds })
+                });
+
+                if (!res.ok) throw new Error(res.statusText);
+
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `files-${Date.now()}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('下载失败:', err);
+                alert('下载失败，请重试');
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = '下载选中';
+            }
         });
+
+        // 删除文件
+        document.getElementById('delete-btn').addEventListener('click', async () => {
+            const selectedIds = getSelectedIds();
+            if (selectedIds.length === 0) return alert('请选择要删除的文件');
+            if (!confirm(`确定要删除选中的 ${selectedIds.length} 个文件吗？`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/files`, {
+                    method: 'DELETE',
+                    headers: {
+                        ...getAuthHeader(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ files: selectedIds })
+                });
+
+                if (!res.ok) throw new Error(res.statusText);
+
+                alert('删除成功');
+                // 重新加载用户信息和文件列表
+                await loadUserInfo();
+                await loadFiles();
+            } catch (err) {
+                console.error('删除失败:', err);
+                alert('删除失败，请重试');
+            }
+        });
+
+        // 辅助函数
+        function getAuthHeader() {
+            return {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            };
+        }
+
+        function getSelectedIds() {
+            return Array.from(document.querySelectorAll('.selected'))
+                .map(tr => parseInt(tr.dataset.id));
+        }
+
+        function formatSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            for (const unit of units) {
+                if (size < 1024) return `${size.toFixed(1)} ${unit}`;
+                size /= 1024;
+            }
+            return `${size.toFixed(1)} TB`;
+        }
+
+        function showError(msg) {
+            const div = document.createElement('div');
+            div.style.position = 'fixed';
+            div.style.top = '20px';
+            div.style.right = '20px';
+            div.style.padding = '15px';
+            div.style.background = '#e74c3c';
+            div.style.color = 'white';
+            div.style.borderRadius = '8px';
+            div.textContent = msg;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        // 拖放上传逻辑
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        ['dragenter', 'dragover'].forEach(event => {
+            dropZone.addEventListener(event, () => {
+                dropZone.classList.add('active');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(event => {
+            dropZone.addEventListener(event, () => {
+                dropZone.classList.remove('active');
+            });
+        });
+
+        ['dragenter', 'dragover', 'dragleave'].forEach(event => {
+                dropZone.addEventListener(event, (e) => {
+                    e.preventDefault(); // 阻止默认行为
+                    dropZone.classList.toggle('active', event !== 'dragleave');
+                });
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        document.addEventListener('dragover', e => e.preventDefault());
+        document.addEventListener('drop', e => e.preventDefault());
     </script>
 </body>
 
