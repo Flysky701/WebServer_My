@@ -346,7 +346,6 @@ bool FileHandler::handle_download(const HttpRequest &req, HttpResponse &res){
                 .set_content(R"({"error": "File transfer failed"})", "application/json");
             return true;
         }
-        LOG_DEBUG("文件下载成功");
         // 若SendFile成功，HTTP状态码默认为200
         return true;
     }
@@ -362,3 +361,22 @@ bool FileHandler::handle_download(const HttpRequest &req, HttpResponse &res){
     }
     return false;
 }
+/*
+现在问题在于
+先发送 文件
+再发送 头文件
+导致无法正确 解析发送文件
+
+解决方法 
+1. 设置头
+2. 发送头   -> conn类发送  2
+3. 发送文件 -> 路由管理发送 1
+
+conn 类发送头后 -> 在由 conn类发送 ？
+分解成两个任务 ？ 
+先发送头再 发送任务
+
+次优解决办法
+直接写入res中发送
+无法处理大文件
+*/

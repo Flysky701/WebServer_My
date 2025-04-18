@@ -288,7 +288,7 @@ void Server::HandleEvent(epoll_event &event)
         {
             std::lock_guard<std::mutex> lock(epoll_mtx);
             timer_.Add(fd, CONN_TIMEOUT);
-            if (!conn->HasPendingWrite() || conn -> SendFileData()){
+            if (!conn->HasPendingWrite()){
                 M_epoll_.ModifyFd(fd, EPOLLIN | EPOLLET);
             }
         }
@@ -334,31 +334,19 @@ void Server::SubmitToThreadPool(std::shared_ptr<Connection> conn)
 
             // 序列化响应
             std::string resp_str = std::move(res.serialize());
-            // DEBUG
             LOG_DEBUG("响应内容:\n" + resp_str);
             {
                 std::lock_guard<std::mutex> lock(epoll_mtx);
                 conn->WriteData(resp_str);
             }
-            // 提交Flush及事件修改到主线程
+            //增加File事件
             if(res.HasFile())
             {
                 int file_fd = res.GetFileFd();
                 size_t file_size = res.GetFileSize();
                 conn->SetFileToSend(file_fd, file_size);
-                {
-                    std::lock_guard<std::mutex> t_lock(task_mtx);
-                    pending_tasks.push([this, fd = conn->GetFd()]()
-                    {
-                    if (!Conns_.count(fd)) return;
-                    auto conn = Conns_[fd];
-                    std::lock_guard<std::mutex> e_lock(epoll_mtx);
-                    uint32_t events = EPOLLIN | EPOLLET;
-                    M_epoll_.ModifyFd(conn->GetFd(), events); 
-                    });
-                }
             }
-            else 
+            // 提交Flush及事件修改到主线程
             {
                 std::lock_guard<std::mutex> t_lock(task_mtx);
                 pending_tasks.push([this, fd = conn->GetFd()]()

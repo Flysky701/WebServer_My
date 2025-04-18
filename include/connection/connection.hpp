@@ -21,9 +21,8 @@ class Connection{
         bool ReadData();                         // 从socket读取数据
         bool WriteData(const std::string &data); // 写入数据到缓冲区
         bool Flush();
-        bool SendFileData();
         void ClearReadBuffer() { r_buffer.clear(); };
-
+        
         std::vector<char> GetReadBuffer() { 
             std::lock_guard<std::mutex> lock(r_mtx_);
             return r_buffer; 
@@ -32,7 +31,8 @@ class Connection{
         int GetFd() const {return fd_;}
         
         bool HasPendingWrite() const { return !w_buffer.empty();}
-
+        
+        // bool SendFileData();
         void SetFileToSend(int fd, size_t size){ 
             file_fd_ = fd, file_size_ = size, file_sent_ = 0;
         }
@@ -43,6 +43,7 @@ class Connection{
         std::vector<char> r_buffer;
         std::string w_buffer;
 
+        // 文件类， 用于发送。。
         int file_fd_ = -1;     // 待发送的文件描述符
         size_t file_size_ = 0; // 文件总大小
         size_t file_sent_ = 0; // 已发送字节数
@@ -114,39 +115,16 @@ bool Connection::WriteData(const std::string& data){
         return false;
     }
 }
-bool Connection::SendFileData(){
-    if(file_fd_ == -1)return true;
-    off_t offset = file_sent_;
-    ssize_t sent = sendfile(fd_, file_fd_, &offset, file_size_ - file_sent_);
-
-    if (sent < 0){
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-        {
-            return false; // 需要下次继续发送
-        }
-        close(file_fd_);
-        file_fd_ = -1;
-        return false; // 发送失败
-    }
-    else if (sent == 0 || file_sent_ + sent >= file_size_){
-        close(file_fd_);
-        file_fd_ = -1;
-        return true; // 发送完成
-    }
-
-    file_sent_ += sent;
-    return false; // 还有剩余数据
-}
 // 普通发送
 bool Connection::Flush()
 {
     if (w_buffer.empty())
-        return true;
-
+    return true;
+    
     ssize_t total_sent = 0;
     const char *data = w_buffer.data();
     size_t remaining = w_buffer.size();
-
+    
     std::lock_guard<std::mutex> lock(w_mtx_);
     while (remaining > 0)
     {
@@ -162,7 +140,7 @@ bool Connection::Flush()
             }
         }
         else if (sent == 0){
-
+            
             return false; // 连接关闭
         }
         total_sent += sent;
@@ -172,5 +150,53 @@ bool Connection::Flush()
     if (total_sent > 0){
         w_buffer.erase(0, total_sent);
     }
+    
+    //-------------------整合测试
+    if(file_fd_ != -1){
+        while(file_sent_ < file_size_){
+            off_t offset = file_sent_;
+            ssize_t sent = sendfile(fd_, file_fd_, &offset, file_size_ - file_sent_);
+            if (sent < 0)
+            {
+                if (errno == EAGAIN || errno == EWOULDBLOCK){
+                    break;
+                }
+                LOG_ERROR("文件发送失败");
+                close(file_fd_);
+                file_fd_ = -1;
+                return false; // 发送失败
+            }
+            else if (sent == 0 || file_sent_ + sent >= file_size_){
+                close(file_fd_);
+                file_fd_ = -1;
+                return true;
+            }
+            file_sent_ += sent;
+        }
+    }
+    //-------------------
     return true;
 }
+// bool Connection::SendFileData(){
+//     if(file_fd_ == -1)return true;
+//     off_t offset = file_sent_;
+//     ssize_t sent = sendfile(fd_, file_fd_, &offset, file_size_ - file_sent_);
+
+//     if (sent < 0){
+//         if (errno == EAGAIN || errno == EWOULDBLOCK)
+//         {
+//             return false; // 需要下次继续发送
+//         }
+//         close(file_fd_);
+//         file_fd_ = -1;
+//         return false; // 发送失败
+//     }
+//     else if (sent == 0 || file_sent_ + sent >= file_size_){
+//         close(file_fd_);
+//         file_fd_ = -1;
+//         return true; // 发送完成
+//     }
+
+//     file_sent_ += sent;
+//     return false; // 还有剩余数据
+// }
