@@ -147,6 +147,10 @@
             border-color: var(--secondary-color);
             background: #f0f8ff;
         }
+        .file-table tr.selected {
+            background: var(--secondary-color) !important;
+            color: rgb(255, 255, 255);
+        }   
     </style>
 </head>
 
@@ -293,7 +297,9 @@
             // 绑定点击事件
             document.querySelectorAll('.file-table tr[data-id]').forEach(row => {
                 row.addEventListener('click', function () {
-                    this.classList.toggle('selected');
+                    document.querySelectorAll('.file-table tr').forEach(r => r.classList.remove('selected'));
+                    // 添加当前行选中状态
+                    this.classList.add('selected');
                     });
                 });
             } catch (err) {
@@ -444,8 +450,6 @@
             setTimeout(() => div.remove(), 3000);
         }
 
-        // 拖放上传处理（保持不变）
-
         // 拖放上传逻辑
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
@@ -464,6 +468,13 @@
             });
         });
 
+        ['dragenter', 'dragover', 'dragleave'].forEach(event => {
+                dropZone.addEventListener(event, (e) => {
+                    e.preventDefault(); // 阻止默认行为
+                    dropZone.classList.toggle('active', event !== 'dragleave');
+                });
+        });
+
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             const files = e.dataTransfer.files;
@@ -473,6 +484,9 @@
         fileInput.addEventListener('change', (e) => {
             handleFiles(e.target.files);
         });
+
+        document.addEventListener('dragover', e => e.preventDefault());
+        document.addEventListener('drop', e => e.preventDefault());
     </script>
 </body>
 
